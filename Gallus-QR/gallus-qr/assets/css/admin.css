@@ -1,0 +1,101 @@
+/* Gallus QR — admin generator styling (Milestone 1). */
+
+.gqr-wrap .gqr-tagline {
+	margin: 0 0 1.25rem;
+	color: #50575e;
+}
+
+/* Two columns: controls on the left, live preview on the right. */
+.gqr-layout {
+	display: grid;
+	grid-template-columns: minmax(280px, 360px) 1fr;
+	gap: 2rem;
+	align-items: start;
+}
+
+@media screen and (max-width: 782px) {
+	.gqr-layout {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* --- Controls ------------------------------------------------------------- */
+
+.gqr-controls {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	padding: 1.25rem;
+}
+
+.gqr-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	margin-bottom: 1rem;
+}
+
+.gqr-field > span {
+	font-weight: 600;
+	font-size: 0.85rem;
+}
+
+.gqr-field input[type="url"],
+.gqr-field select {
+	width: 100%;
+}
+
+.gqr-field input[type="color"] {
+	width: 100%;
+	height: 34px;
+	padding: 2px;
+	cursor: pointer;
+}
+
+/* Side-by-side rows (shapes, colours). */
+.gqr-row {
+	display: flex;
+	gap: 0.75rem;
+	align-items: flex-end;
+}
+
+.gqr-row .gqr-field {
+	flex: 1;
+}
+
+.gqr-invert {
+	flex: 0 0 auto;
+}
+
+.gqr-clear-link {
+	align-self: flex-start;
+	font-size: 0.8rem;
+}
+
+/* --- Preview -------------------------------------------------------------- */
+
+.gqr-preview {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 1rem;
+}
+
+.gqr-canvas {
+	display: inline-block;
+	padding: 1rem;
+	background:
+		linear-gradient(45deg, #f0f0f1 25%, transparent 25%),
+		linear-gradient(-45deg, #f0f0f1 25%, transparent 25%),
+		linear-gradient(45deg, transparent 75%, #f0f0f1 75%),
+		linear-gradient(-45deg, transparent 75%, #f0f0f1 75%);
+	background-size: 16px 16px;
+	background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+}
+
+.gqr-downloads {
+	display: flex;
+	gap: 0.75rem;
+}
