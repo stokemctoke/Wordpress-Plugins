@@ -28,6 +28,8 @@
 		invert:      $( 'gqr-invert' ),
 		logo:        $( 'gqr-logo' ),
 		logoClear:   $( 'gqr-logo-clear' ),
+		size:        $( 'gqr-size' ),
+		sizeValue:   $( 'gqr-size-value' ),
 		canvas:      $( 'gqr-canvas' ),
 		dlPng:       $( 'gqr-download-png' ),
 		dlSvg:       $( 'gqr-download-svg' ),
@@ -43,10 +45,18 @@
 	var logoDataUrl = null;
 	var encodedValue = els.data.value;
 
+	// Clamp the size slider to the supported 128–1024 range.
+	function exportSize() {
+		var n = parseInt( els.size.value, 10 );
+		if ( isNaN( n ) ) { n = 512; }
+		return Math.max( 128, Math.min( 1024, n ) );
+	}
+
 	function buildOptions() {
+		var size = exportSize();
 		var opts = {
-			width: 320,
-			height: 320,
+			width: size,
+			height: size,
 			type: 'svg',
 			data: encodedValue || ' ',
 			margin: 8,
@@ -133,6 +143,11 @@
 	els.logoClear.addEventListener( 'click', function () {
 		logoDataUrl = null;
 		els.logo.value = '';
+		render();
+	} );
+
+	els.size.addEventListener( 'input', function () {
+		els.sizeValue.textContent = exportSize();
 		render();
 	} );
 

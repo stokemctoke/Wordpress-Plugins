@@ -110,6 +110,36 @@ class Gallus_QR_Database {
 	}
 
 	/**
+	 * Rename a code (update its label).
+	 *
+	 * @param int    $id
+	 * @param string $title
+	 * @return bool
+	 */
+	public function update_code_title( $id, $title ) {
+		global $wpdb;
+		return false !== $wpdb->update(
+			$this->codes_table(),
+			array( 'title' => $title ),
+			array( 'id' => $id ),
+			array( '%s' ),
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * Delete a code and all of its scan rows.
+	 *
+	 * @param int $id
+	 * @return bool
+	 */
+	public function delete_code( $id ) {
+		global $wpdb;
+		$wpdb->delete( $this->scans_table(), array( 'code_id' => $id ), array( '%d' ) );
+		return false !== $wpdb->delete( $this->codes_table(), array( 'id' => $id ), array( '%d' ) );
+	}
+
+	/**
 	 * Look up a code by its slug.
 	 *
 	 * @param string $slug

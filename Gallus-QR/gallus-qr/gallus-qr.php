@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Gallus QR
  * Plugin URI:        https://stokemctoke.com
- * Description:       Free, self-hosted custom QR code generator — centre logo, custom shapes, PNG/SVG export, and scan tracking for dynamic codes.
- * Version:           0.2.0
+ * Description:       Free, self-hosted custom QR code generator — centre logo, custom shapes, adjustable export size, PNG/SVG export, and scan tracking for dynamic codes.
+ * Version:           0.3.0
  * Author:            Gallus Gadgets
  * Author URI:        https://gallusgadgets.com
  * License:           GPL-2.0-or-later
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Handy constants so other files can find themselves and bust asset caches.
-define( 'GALLUS_QR_VERSION', '0.2.0' );
+define( 'GALLUS_QR_VERSION', '0.3.0' );
 define( 'GALLUS_QR_PATH', plugin_dir_path( __FILE__ ) );   // /…/gallus-qr/
 define( 'GALLUS_QR_URL', plugin_dir_url( __FILE__ ) );      // https://…/gallus-qr/
 

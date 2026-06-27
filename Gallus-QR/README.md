@@ -5,7 +5,7 @@ clone of sites like QRCode Monkey, with optional scan tracking (the part the pai
 sites charge for).
 
 **Brand:** Gallus QR · **Runs on:** stokemctoke.com (self-hosted WordPress) ·
-**Status:** Milestone 1 (generator) ✅ · Milestone 2 (scan tracking) ✅ — both built · Patreon layer (v2) next.
+**Status:** v0.3.0 — generator ✅ · scan tracking ✅ (verified live) · export-size + rename/delete ✅ · Patreon layer (v2) next.
 
 > Note: the brand name is "Gallus QR" even though it lives on stokemctoke.com.
 > gallusgadgets.com stays dedicated to sales/info. The plugin name and the host
@@ -22,8 +22,10 @@ often each one is scanned.
 - **Custom shapes** — square + rounded body dots and corner (eye) shapes.
 - **Colours / gradients** — gradients supported but **off by default**; default
   is pure black-on-white (or inverted) for PCB silkscreen layers.
-- **Export** — PNG + SVG (SVG matters for clean print/silkscreen scaling).
-- **Scan tracking** — total scans + a 30-day chart, per code (via the Trackable toggle).
+- **Export** — PNG + SVG (SVG matters for clean print/silkscreen scaling); adjustable
+  PNG resolution 128–1024 px.
+- **Scan tracking** — total scans + a 30-day chart, per code (via the Trackable toggle);
+  rename or delete saved codes from the Scan Stats screen.
 - **URLs only** for now; other types (WiFi, vCard, text…) come later.
 - **You only** (wp-admin) for now; a Patreon/members layer is planned for v2.
 

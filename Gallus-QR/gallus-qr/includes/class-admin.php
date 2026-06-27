@@ -26,6 +26,50 @@ class Gallus_QR_Admin {
 	public function init() {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+
+		// Rename / delete handlers for the Scan Stats screen (admin-post.php).
+		add_action( 'admin_post_gallus_qr_rename', array( $this, 'handle_rename' ) );
+		add_action( 'admin_post_gallus_qr_delete', array( $this, 'handle_delete' ) );
+	}
+
+	/**
+	 * Handle a rename POST from the Scan Stats screen, then redirect back.
+	 */
+	public function handle_rename() {
+		$id = isset( $_POST['code_id'] ) ? absint( $_POST['code_id'] ) : 0;
+
+		if ( ! current_user_can( 'manage_options' )
+			|| ! check_admin_referer( 'gallus_qr_rename_' . $id ) ) {
+			wp_die( esc_html__( 'Permission denied.', 'gallus-qr' ) );
+		}
+
+		$title = isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '';
+		$this->db->update_code_title( $id, $title );
+
+		wp_safe_redirect( add_query_arg( 'gqr_msg', 'renamed', $this->stats_url() ) );
+		exit;
+	}
+
+	/**
+	 * Handle a delete POST from the Scan Stats screen, then redirect back.
+	 */
+	public function handle_delete() {
+		$id = isset( $_POST['code_id'] ) ? absint( $_POST['code_id'] ) : 0;
+
+		if ( ! current_user_can( 'manage_options' )
+			|| ! check_admin_referer( 'gallus_qr_delete_' . $id ) ) {
+			wp_die( esc_html__( 'Permission denied.', 'gallus-qr' ) );
+		}
+
+		$this->db->delete_code( $id );
+
+		wp_safe_redirect( add_query_arg( 'gqr_msg', 'deleted', $this->stats_url() ) );
+		exit;
+	}
+
+	/** @return string URL of the Scan Stats admin page. */
+	private function stats_url() {
+		return admin_url( 'admin.php?page=gallus-qr-stats' );
 	}
 
 	/**
@@ -170,6 +214,15 @@ class Gallus_QR_Admin {
 						</button>
 					</label>
 
+					<label class="gqr-field">
+						<span>
+							<?php esc_html_e( 'Export size (px)', 'gallus-qr' ); ?>
+							<output id="gqr-size-value">512</output>
+						</span>
+						<input type="range" id="gqr-size" min="128" max="1024" step="64" value="512">
+						<span class="gqr-help"><?php esc_html_e( 'Downloaded PNG resolution (128–1024). SVG stays vector.', 'gallus-qr' ); ?></span>
+					</label>
+
 					<!-- Tracking -->
 					<div class="gqr-track">
 						<label class="gqr-checkbox">
@@ -215,10 +268,13 @@ class Gallus_QR_Admin {
 	 * bar chart (rendered server-side — no chart library needed).
 	 */
 	public function render_stats_page() {
-		$codes = $this->db->get_codes_with_counts();
+		$codes  = $this->db->get_codes_with_counts();
+		$action = esc_url( admin_url( 'admin-post.php' ) );
 		?>
 		<div class="wrap gqr-wrap">
 			<h1><?php esc_html_e( 'Gallus QR — Scan Stats', 'gallus-qr' ); ?></h1>
+
+			<?php $this->maybe_render_notice(); ?>
 
 			<?php if ( empty( $codes ) ) : ?>
 				<p>
@@ -233,13 +289,22 @@ class Gallus_QR_Admin {
 							<th><?php esc_html_e( 'Destination', 'gallus-qr' ); ?></th>
 							<th><?php esc_html_e( 'Total scans', 'gallus-qr' ); ?></th>
 							<th><?php esc_html_e( 'Last 30 days', 'gallus-qr' ); ?></th>
+							<th><?php esc_html_e( 'Actions', 'gallus-qr' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
 						<?php foreach ( $codes as $code ) : ?>
 							<?php $short = home_url( '/qr/' . $code->slug ); ?>
 							<tr>
-								<td><?php echo esc_html( $code->title ? $code->title : '—' ); ?></td>
+								<td>
+									<form method="post" action="<?php echo $action; ?>" class="gqr-rename">
+										<input type="hidden" name="action" value="gallus_qr_rename">
+										<input type="hidden" name="code_id" value="<?php echo (int) $code->id; ?>">
+										<?php wp_nonce_field( 'gallus_qr_rename_' . (int) $code->id ); ?>
+										<input type="text" name="title" value="<?php echo esc_attr( $code->title ); ?>" placeholder="<?php esc_attr_e( 'Label', 'gallus-qr' ); ?>">
+										<button type="submit" class="button button-small"><?php esc_html_e( 'Save', 'gallus-qr' ); ?></button>
+									</form>
+								</td>
 								<td>
 									<a href="<?php echo esc_url( $short ); ?>" target="_blank" rel="noopener">
 										/qr/<?php echo esc_html( $code->slug ); ?>
@@ -248,6 +313,14 @@ class Gallus_QR_Admin {
 								<td class="gqr-dest"><?php echo esc_html( $code->destination ); ?></td>
 								<td class="gqr-total"><?php echo (int) $code->total_scans; ?></td>
 								<td><?php $this->render_sparkline( (int) $code->id ); ?></td>
+								<td>
+									<form method="post" action="<?php echo $action; ?>" onsubmit="return confirm('<?php echo esc_js( __( 'Delete this code and all its scan data? This cannot be undone.', 'gallus-qr' ) ); ?>');">
+										<input type="hidden" name="action" value="gallus_qr_delete">
+										<input type="hidden" name="code_id" value="<?php echo (int) $code->id; ?>">
+										<?php wp_nonce_field( 'gallus_qr_delete_' . (int) $code->id ); ?>
+										<button type="submit" class="button-link gqr-delete"><?php esc_html_e( 'Delete', 'gallus-qr' ); ?></button>
+									</form>
+								</td>
 							</tr>
 						<?php endforeach; ?>
 					</tbody>
@@ -255,6 +328,18 @@ class Gallus_QR_Admin {
 			<?php endif; ?>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Show a success notice after a rename/delete redirect.
+	 */
+	private function maybe_render_notice() {
+		$msg = isset( $_GET['gqr_msg'] ) ? sanitize_key( $_GET['gqr_msg'] ) : '';
+		if ( 'renamed' === $msg ) {
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Code renamed.', 'gallus-qr' ) . '</p></div>';
+		} elseif ( 'deleted' === $msg ) {
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Code deleted.', 'gallus-qr' ) . '</p></div>';
+		}
 	}
 
 	/**

@@ -81,6 +81,16 @@
 	gap: 1rem;
 }
 
+/* Keep the preview a fixed display size regardless of the chosen export
+   resolution — the QR is rendered at full size for download, shrunk here. */
+.gqr-canvas svg,
+.gqr-canvas canvas {
+	display: block;
+	width: 100%;
+	height: auto;
+	max-width: 288px;
+}
+
 .gqr-canvas {
 	display: inline-block;
 	padding: 1rem;
@@ -172,4 +182,29 @@
 	background: #2271b1;
 	border-radius: 1px 1px 0 0;
 	min-height: 2px;
+}
+
+/* Inline rename + delete controls in the stats table. */
+.gqr-rename {
+	display: flex;
+	gap: 0.4rem;
+	align-items: center;
+}
+
+.gqr-rename input[type="text"] {
+	max-width: 160px;
+}
+
+.gqr-delete {
+	color: #b32d2e;
+}
+
+.gqr-delete:hover {
+	color: #d63638;
+}
+
+/* Export-size slider readout. */
+#gqr-size-value {
+	font-weight: 700;
+	margin-left: 0.25rem;
 }
