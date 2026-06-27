@@ -1,7 +1,7 @@
 <?php
 /**
- * Admin side of Gallus QR: registers the menu, renders the generator screen,
- * and loads the JS/CSS only on our own page.
+ * Admin side of Gallus QR: the menu, the generator screen, the scan-stats
+ * dashboard, and asset loading.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -10,13 +10,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Gallus_QR_Admin {
 
-	/**
-	 * The hook suffix WordPress returns for our admin page. We keep it so we
-	 * can load assets ONLY here, not across all of wp-admin.
-	 *
-	 * @var string
-	 */
+	/** @var Gallus_QR_Database */
+	private $db;
+
+	/** Hook suffix for the generator page (assets load only here). @var string */
 	private $page_hook = '';
+
+	public function __construct( Gallus_QR_Database $db ) {
+		$this->db = $db;
+	}
 
 	/**
 	 * Wire up WordPress hooks. Called from gallus-qr.php on plugins_loaded.
@@ -27,17 +29,35 @@ class Gallus_QR_Admin {
 	}
 
 	/**
-	 * Add "Gallus QR" to the wp-admin sidebar.
+	 * Add "Gallus QR" (generator) plus a "Scan Stats" submenu.
 	 */
 	public function register_menu() {
 		$this->page_hook = add_menu_page(
-			__( 'Gallus QR', 'gallus-qr' ),       // browser <title>
-			__( 'Gallus QR', 'gallus-qr' ),       // sidebar label
-			'manage_options',                       // capability — admins only (v1 = just you)
-			'gallus-qr',                            // menu slug
-			array( $this, 'render_page' ),          // callback that prints the screen
-			'dashicons-qrcode',                     // sidebar icon
-			30                                       // position
+			__( 'Gallus QR', 'gallus-qr' ),
+			__( 'Gallus QR', 'gallus-qr' ),
+			'manage_options',
+			'gallus-qr',
+			array( $this, 'render_generator_page' ),
+			'dashicons-qrcode',
+			30
+		);
+
+		add_submenu_page(
+			'gallus-qr',
+			__( 'Generator', 'gallus-qr' ),
+			__( 'Generator', 'gallus-qr' ),
+			'manage_options',
+			'gallus-qr',
+			array( $this, 'render_generator_page' )
+		);
+
+		add_submenu_page(
+			'gallus-qr',
+			__( 'Scan Stats', 'gallus-qr' ),
+			__( 'Scan Stats', 'gallus-qr' ),
+			'manage_options',
+			'gallus-qr-stats',
+			array( $this, 'render_stats_page' )
 		);
 	}
 
@@ -51,7 +71,6 @@ class Gallus_QR_Admin {
 			return;
 		}
 
-		// Bundled QR engine (no CDN — version-pinned, works offline).
 		wp_enqueue_script(
 			'qr-code-styling',
 			GALLUS_QR_URL . 'assets/js/lib/qr-code-styling.js',
@@ -60,13 +79,23 @@ class Gallus_QR_Admin {
 			true
 		);
 
-		// Our generator UI, dependent on the engine being loaded first.
 		wp_enqueue_script(
 			'gallus-qr-generator',
 			GALLUS_QR_URL . 'assets/js/generator.js',
 			array( 'qr-code-styling' ),
 			GALLUS_QR_VERSION,
 			true
+		);
+
+		// Hand the front-end what it needs to save trackable codes.
+		wp_localize_script(
+			'gallus-qr-generator',
+			'GallusQR',
+			array(
+				'restUrl' => esc_url_raw( rest_url( 'gallus-qr/v1/codes' ) ),
+				'nonce'   => wp_create_nonce( 'wp_rest' ),
+				'qrBase'  => esc_url_raw( home_url( '/qr/' ) ),
+			)
 		);
 
 		wp_enqueue_style(
@@ -78,10 +107,10 @@ class Gallus_QR_Admin {
 	}
 
 	/**
-	 * Print the generator screen. The markup is the two-column layout; all the
-	 * live behaviour happens in generator.js against these element IDs.
+	 * The generator screen. Markup is the two-column layout; generator.js wires
+	 * the live behaviour against these element IDs.
 	 */
-	public function render_page() {
+	public function render_generator_page() {
 		?>
 		<div class="wrap gqr-wrap">
 			<h1><?php esc_html_e( 'Gallus QR', 'gallus-qr' ); ?></h1>
@@ -140,6 +169,28 @@ class Gallus_QR_Admin {
 							<?php esc_html_e( 'Remove logo', 'gallus-qr' ); ?>
 						</button>
 					</label>
+
+					<!-- Tracking -->
+					<div class="gqr-track">
+						<label class="gqr-checkbox">
+							<input type="checkbox" id="gqr-trackable">
+							<span><?php esc_html_e( 'Trackable — count scans (dynamic code)', 'gallus-qr' ); ?></span>
+						</label>
+						<p class="gqr-help">
+							<?php esc_html_e( 'On: the QR points at this site and each scan is counted. Off: the QR encodes your URL directly — works forever but cannot be counted (best for permanent hardware).', 'gallus-qr' ); ?>
+						</p>
+
+						<div id="gqr-track-fields" class="gqr-track-fields" hidden>
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Label (for your stats)', 'gallus-qr' ); ?></span>
+								<input type="text" id="gqr-title" placeholder="<?php esc_attr_e( 'e.g. Business card', 'gallus-qr' ); ?>">
+							</label>
+							<button type="button" id="gqr-save" class="button button-secondary">
+								<?php esc_html_e( 'Save &amp; make trackable', 'gallus-qr' ); ?>
+							</button>
+							<p id="gqr-save-result" class="gqr-save-result" hidden></p>
+						</div>
+					</div>
 				</div>
 
 				<!-- RIGHT: live preview + downloads -->
@@ -157,5 +208,82 @@ class Gallus_QR_Admin {
 			</div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * The scan-stats dashboard: every saved code with its total and a 30-day
+	 * bar chart (rendered server-side — no chart library needed).
+	 */
+	public function render_stats_page() {
+		$codes = $this->db->get_codes_with_counts();
+		?>
+		<div class="wrap gqr-wrap">
+			<h1><?php esc_html_e( 'Gallus QR — Scan Stats', 'gallus-qr' ); ?></h1>
+
+			<?php if ( empty( $codes ) ) : ?>
+				<p>
+					<?php esc_html_e( 'No trackable codes yet. Create one on the Generator screen with “Trackable” ticked.', 'gallus-qr' ); ?>
+				</p>
+			<?php else : ?>
+				<table class="widefat gqr-stats-table">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Label', 'gallus-qr' ); ?></th>
+							<th><?php esc_html_e( 'Short link', 'gallus-qr' ); ?></th>
+							<th><?php esc_html_e( 'Destination', 'gallus-qr' ); ?></th>
+							<th><?php esc_html_e( 'Total scans', 'gallus-qr' ); ?></th>
+							<th><?php esc_html_e( 'Last 30 days', 'gallus-qr' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $codes as $code ) : ?>
+							<?php $short = home_url( '/qr/' . $code->slug ); ?>
+							<tr>
+								<td><?php echo esc_html( $code->title ? $code->title : '—' ); ?></td>
+								<td>
+									<a href="<?php echo esc_url( $short ); ?>" target="_blank" rel="noopener">
+										/qr/<?php echo esc_html( $code->slug ); ?>
+									</a>
+								</td>
+								<td class="gqr-dest"><?php echo esc_html( $code->destination ); ?></td>
+								<td class="gqr-total"><?php echo (int) $code->total_scans; ?></td>
+								<td><?php $this->render_sparkline( (int) $code->id ); ?></td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render a 30-day bar chart for one code as plain HTML/CSS bars.
+	 *
+	 * @param int $code_id
+	 */
+	private function render_sparkline( $code_id ) {
+		$days  = 30;
+		$daily = $this->db->get_daily_scans( $code_id, $days );
+
+		// Build an ordered list of the last N days, filling gaps with 0.
+		$counts = array();
+		for ( $i = $days - 1; $i >= 0; $i-- ) {
+			$day            = gmdate( 'Y-m-d', strtotime( "-{$i} days", current_time( 'timestamp' ) ) );
+			$counts[ $day ] = isset( $daily[ $day ] ) ? $daily[ $day ] : 0;
+		}
+
+		$max = max( 1, max( $counts ) );
+		echo '<div class="gqr-spark" role="img" aria-label="' . esc_attr__( 'Scans per day, last 30 days', 'gallus-qr' ) . '">';
+		foreach ( $counts as $day => $hits ) {
+			$pct   = (int) round( ( $hits / $max ) * 100 );
+			$title = sprintf( '%s: %d', $day, $hits );
+			printf(
+				'<span class="gqr-spark-bar" style="height:%d%%" title="%s"></span>',
+				max( 4, $pct ), // floor so empty days are still visible
+				esc_attr( $title )
+			);
+		}
+		echo '</div>';
 	}
 }

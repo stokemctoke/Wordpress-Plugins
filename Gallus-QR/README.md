@@ -5,7 +5,7 @@ clone of sites like QRCode Monkey, with optional scan tracking (the part the pai
 sites charge for).
 
 **Brand:** Gallus QR · **Runs on:** stokemctoke.com (self-hosted WordPress) ·
-**Status:** Milestone 1 (generator) built — ready to install · Milestone 2 (tracking) next.
+**Status:** Milestone 1 (generator) ✅ · Milestone 2 (scan tracking) ✅ — both built · Patreon layer (v2) next.
 
 > Note: the brand name is "Gallus QR" even though it lives on stokemctoke.com.
 > gallusgadgets.com stays dedicated to sales/info. The plugin name and the host
@@ -23,7 +23,7 @@ often each one is scanned.
 - **Colours / gradients** — gradients supported but **off by default**; default
   is pure black-on-white (or inverted) for PCB silkscreen layers.
 - **Export** — PNG + SVG (SVG matters for clean print/silkscreen scaling).
-- **Scan tracking** — total scans + scans-over-time, per code (Milestone 2).
+- **Scan tracking** — total scans + a 30-day chart, per code (via the Trackable toggle).
 - **URLs only** for now; other types (WiFi, vCard, text…) come later.
 - **You only** (wp-admin) for now; a Patreon/members layer is planned for v2.
 
@@ -54,12 +54,13 @@ requires the scan to pass through a server, which only the dynamic form does.
 A plugin is a folder in `wp-content/plugins/` with a main PHP file whose header
 comment WordPress reads. It then "hooks" into WordPress:
 
-- **Shortcode** `[qr_generator]` — drop the tool onto any page/admin screen.
-- **Admin menu** — a "Gallus QR" item in the wp-admin sidebar (generator + dashboard).
-- **REST endpoint** — a private URL the page's JS calls to save a new code.
+- **Admin menu** — a "Gallus QR" item in the wp-admin sidebar (Generator + Scan Stats).
+- **REST endpoint** — `POST /wp-json/gallus-qr/v1/codes`, admin-only, saves a code.
 - **Rewrite rule** — teaches WP that `/qr/{slug}` isn't a normal page; route it to
   our redirect handler.
-- **Activation hook** — runs once on install to create the database tables.
+- **Activation hook** — creates the database tables and flushes the rewrite rule.
+- **Shortcode** `[qr_generator]` — *planned for the Patreon/front-end layer (v2)*; not
+  registered yet, the tool currently lives in wp-admin.
 
 QR **drawing** happens in the browser via the open-source [`qr-code-styling`]
 library (logo, shapes, colours, PNG/SVG export). **Tracking** happens in PHP + MySQL.
@@ -71,32 +72,33 @@ Clean split: design = client-side, counting = server-side.
 
 ## Scan-tracking flow (end to end)
 
-1. Open **Gallus QR → New** in wp-admin, paste a URL, design the look, tick **Trackable**.
-2. JS posts it to the REST endpoint → PHP saves the code, returns the slug.
-3. The QR encodes `stokemctoke.com/qr/ab12cd`; you download PNG/SVG.
-4. Someone scans → WP routes `/qr/ab12cd` to our handler → logs the scan → redirects
-   to the real URL. The scanner notices nothing.
-5. Dashboard shows total scans + a daily line chart.
+1. Open **Gallus QR** in wp-admin, paste a URL, design the look, tick **Trackable**,
+   give it a label, and hit **Save & make trackable**.
+2. JS posts it to the REST endpoint → PHP saves the code, returns the slug + short URL.
+3. The QR re-renders to encode `stokemctoke.com/qr/ab12cd`; you download PNG/SVG.
+4. Someone scans → WP routes `/qr/ab12cd` to our handler → logs the scan (timestamp,
+   salted IP hash, user-agent) → 302-redirects to the real URL. The scanner notices nothing.
+5. **Scan Stats** shows each code's total + a 30-day bar chart.
 
 ---
 
-## Planned plugin structure
+## Plugin structure
 
 ```
 gallus-qr/
-├── gallus-qr.php           ← main file + plugin header, wires everything up
+├── gallus-qr.php           ← header, constants, activation hook, bootstrap
 ├── includes/
-│   ├── class-admin.php      ← admin menu, generator page, dashboard  [M1]
-│   ├── class-database.php   ← creates/queries the tables             [M2]
-│   ├── class-rest.php       ← save-a-code endpoint (admin only)      [M2]
-│   └── class-redirect.php   ← handles /qr/{slug}: log scan → redirect [M2]
+│   ├── class-admin.php      ← admin menu, generator page, Scan Stats dashboard
+│   ├── class-database.php   ← creates/queries the two tables, slug generation
+│   ├── class-rest.php       ← save-a-code endpoint (admin only)
+│   └── class-redirect.php   ← handles /qr/{slug}: log scan → 302 redirect
 └── assets/
-    ├── js/generator.js          ← the live generator UI
+    ├── js/generator.js          ← the live generator UI + trackable save flow
     ├── js/lib/qr-code-styling.js← bundled engine (no CDN)
-    └── css/admin.css            ← two-column admin styling
+    └── css/admin.css            ← two-column generator + stats styling
 ```
 
-(Only `class-admin.php` is needed for Milestone 1; the others land in Milestone 2.)
+All files are built (Milestones 1 + 2).
 
 ---
 
@@ -130,11 +132,10 @@ already has room for v2 breakdowns (device, location) without a rebuild.
 
 ## Roadmap
 
-- **Milestone 1 — Generator (build first):** plugin skeleton, admin page,
-  `qr-code-styling` with logo + square/rounded shapes, PNG/SVG export. Useful
-  immediately, before any tracking exists.
-- **Milestone 2 — Tracking:** DB tables, save endpoint, `/qr/{slug}` redirect +
-  logging, dashboard (total + over-time chart), the Trackable toggle.
+- **Milestone 1 — Generator ✅:** plugin skeleton, admin page, `qr-code-styling`
+  with logo + square/rounded shapes, colours/invert, PNG/SVG export.
+- **Milestone 2 — Tracking ✅:** DB tables, save endpoint, `/qr/{slug}` redirect +
+  logging, Scan Stats dashboard (total + 30-day chart), the Trackable toggle.
 - **v2 — Patreon layer:** open the generator to logged-in/members, per-user code
   lists, richer analytics (device/location), a store-wide 10% discount hook for
   gallusgadgets.com, optional logo saving to the Media Library, more code types
@@ -144,7 +145,7 @@ already has room for v2 breakdowns (device, location) without a rebuild.
 
 ## Locked decisions
 
-- **Name / slug:** Gallus QR · plugin folder `gallus-qr` · shortcode `[qr_generator]`.
+- **Name / slug:** Gallus QR · plugin folder `gallus-qr` · shortcode `[qr_generator]` reserved for v2.
 - **Host:** stokemctoke.com — self-hosted WordPress, Ubuntu 24.04 + CloudPanel.
 - **Redirect path:** `/qr/{slug}`.
 - **Permalinks:** "pretty" (not Plain) — required for `/qr/{slug}` to route. ✅
@@ -156,18 +157,23 @@ already has room for v2 breakdowns (device, location) without a rebuild.
 
 ---
 
-## Install (Milestone 1)
+## Install
 
 1. Zip the inner **`gallus-qr/`** folder (the one containing `gallus-qr.php`).
 2. In wp-admin on stokemctoke.com: **Plugins → Add New → Upload Plugin** → choose the
    zip → **Install Now** → **Activate**.
    *(Or copy the `gallus-qr/` folder straight into `wp-content/plugins/` and activate.)*
-3. **Gallus QR** appears in the admin sidebar (QR-code icon).
-4. Design a code, hit **Download SVG/PNG**, and scan it to confirm.
+   On activation the plugin creates its two tables and registers the `/qr/` route.
+3. **Gallus QR** appears in the admin sidebar (QR-code icon), with a **Scan Stats** subpage.
+4. Design a code → **Download SVG/PNG**. For tracking, tick **Trackable**, label it,
+   **Save & make trackable**, then download — scan it and watch the count in Scan Stats.
 
-The bundled engine (`assets/js/lib/qr-code-styling.js`, v1.6.0 UMD) ships with the
-plugin — no CDN, works offline. M2 will add the activation hook that creates the
-scan tables (and needs Permalinks not set to "Plain").
+**Requirements:** Permalinks must not be set to "Plain" (Settings → Permalinks) for the
+`/qr/{slug}` redirect to route. The bundled engine (`qr-code-styling` 1.6.0 UMD) ships
+with the plugin — no CDN, works offline.
+
+> Upgrading from v0.1.0? Deactivate + reactivate once so the activation hook creates the
+> new tables and flushes the rewrite rule.
 
 ---
 

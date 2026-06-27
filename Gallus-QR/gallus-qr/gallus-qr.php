@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Gallus QR
  * Plugin URI:        https://stokemctoke.com
- * Description:       Free, self-hosted custom QR code generator — centre logo, custom shapes, PNG/SVG export. (Milestone 1: generator only; scan tracking lands in Milestone 2.)
- * Version:           0.1.0
+ * Description:       Free, self-hosted custom QR code generator — centre logo, custom shapes, PNG/SVG export, and scan tracking for dynamic codes.
+ * Version:           0.2.0
  * Author:            Gallus Gadgets
  * Author URI:        https://gallusgadgets.com
  * License:           GPL-2.0-or-later
@@ -20,15 +20,36 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Handy constants so other files can find themselves and bust asset caches.
-define( 'GALLUS_QR_VERSION', '0.1.0' );
+define( 'GALLUS_QR_VERSION', '0.2.0' );
 define( 'GALLUS_QR_PATH', plugin_dir_path( __FILE__ ) );   // /…/gallus-qr/
 define( 'GALLUS_QR_URL', plugin_dir_url( __FILE__ ) );      // https://…/gallus-qr/
 
-// Load the admin class (menu, generator screen, asset loading).
+// Load the classes.
+require_once GALLUS_QR_PATH . 'includes/class-database.php';
+require_once GALLUS_QR_PATH . 'includes/class-redirect.php';
+require_once GALLUS_QR_PATH . 'includes/class-rest.php';
 require_once GALLUS_QR_PATH . 'includes/class-admin.php';
+
+/**
+ * Activation: create the tables and register + flush the /qr/ rewrite rule so
+ * the redirect URLs work immediately (no "Save Permalinks" needed by hand).
+ */
+register_activation_hook( __FILE__, static function () {
+	$db = new Gallus_QR_Database();
+	$db->create_tables();
+
+	Gallus_QR_Redirect::register_rewrite();
+	flush_rewrite_rules();
+} );
+
+// Deactivation: tidy up the rewrite rules (tables/data are left intact).
+register_deactivation_hook( __FILE__, 'flush_rewrite_rules' );
 
 // Boot the plugin once WordPress is ready.
 add_action( 'plugins_loaded', static function () {
-	$admin = new Gallus_QR_Admin();
-	$admin->init();
+	$db = new Gallus_QR_Database();
+
+	( new Gallus_QR_Redirect( $db ) )->init();
+	( new Gallus_QR_REST( $db ) )->init();
+	( new Gallus_QR_Admin( $db ) )->init();
 } );
