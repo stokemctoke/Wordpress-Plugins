@@ -184,15 +184,46 @@
 	min-height: 2px;
 }
 
-/* Inline rename + delete controls in the stats table. */
-.gqr-rename {
+/* Date-range selector above the stats table. */
+.gqr-range-form {
+	margin: 1rem 0 0.5rem;
+}
+
+/* Inline rename / destination edit controls in the stats table. */
+.gqr-inline {
 	display: flex;
 	gap: 0.4rem;
 	align-items: center;
 }
 
-.gqr-rename input[type="text"] {
-	max-width: 160px;
+.gqr-inline input[type="text"] {
+	max-width: 150px;
+}
+
+.gqr-dest-input {
+	max-width: 220px;
+}
+
+/* Total cell: big number with a smaller "unique" sub-line. */
+.gqr-total .gqr-sub {
+	display: block;
+	font-weight: 400;
+	font-size: 0.75rem;
+	color: #646970;
+}
+
+.gqr-devices {
+	font-size: 0.8rem;
+	line-height: 1.5;
+	white-space: nowrap;
+}
+
+.gqr-actions {
+	white-space: nowrap;
+}
+
+.gqr-actions form {
+	display: inline;
 }
 
 .gqr-delete {

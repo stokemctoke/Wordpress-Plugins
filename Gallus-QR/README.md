@@ -5,7 +5,9 @@ clone of sites like QRCode Monkey, with optional scan tracking (the part the pai
 sites charge for).
 
 **Brand:** Gallus QR · **Runs on:** stokemctoke.com (self-hosted WordPress) ·
-**Status:** v0.3.0 — generator ✅ · scan tracking ✅ (verified live) · export-size + rename/delete ✅ · Patreon layer (v2) next.
+**Status:** v0.4.0 — generator ✅ · scan tracking ✅ (verified live) · export-size ✅ ·
+code library (rename / edit destination / delete / re-download) ✅ · analytics (unique +
+device + date-range) ✅ · Patreon layer (v2) next.
 
 > Note: the brand name is "Gallus QR" even though it lives on stokemctoke.com.
 > gallusgadgets.com stays dedicated to sales/info. The plugin name and the host
@@ -24,8 +26,10 @@ often each one is scanned.
   is pure black-on-white (or inverted) for PCB silkscreen layers.
 - **Export** — PNG + SVG (SVG matters for clean print/silkscreen scaling); adjustable
   PNG resolution 128–1024 px.
-- **Scan tracking** — total scans + a 30-day chart, per code (via the Trackable toggle);
-  rename or delete saved codes from the Scan Stats screen.
+- **Scan tracking** — per code: total + unique scans, device split (mobile/tablet/desktop),
+  a per-day bar chart, and a date-range selector (7/30/90/all).
+- **Code library** — from Scan Stats: rename, **edit the destination** (printed code
+  re-points instantly), re-download PNG/SVG, or delete a code.
 - **URLs only** for now; other types (WiFi, vCard, text…) come later.
 - **You only** (wp-admin) for now; a Patreon/members layer is planned for v2.
 
@@ -91,16 +95,16 @@ gallus-qr/
 ├── gallus-qr.php           ← header, constants, activation hook, bootstrap
 ├── includes/
 │   ├── class-admin.php      ← admin menu, generator page, Scan Stats dashboard
-│   ├── class-database.php   ← creates/queries the two tables, slug generation
+│   ├── class-database.php   ← tables, slug generation, analytics queries
 │   ├── class-rest.php       ← save-a-code endpoint (admin only)
 │   └── class-redirect.php   ← handles /qr/{slug}: log scan → 302 redirect
 └── assets/
     ├── js/generator.js          ← the live generator UI + trackable save flow
+    ├── js/stats.js              ← re-download a saved code from its short link
     ├── js/lib/qr-code-styling.js← bundled engine (no CDN)
-    └── css/admin.css            ← two-column generator + stats styling
+    ├── css/admin.css            ← generator + stats styling
+    └── img/menu-icon.png        ← white "GG" admin-menu icon
 ```
-
-All files are built (Milestones 1 + 2).
 
 ---
 
@@ -138,6 +142,9 @@ already has room for v2 breakdowns (device, location) without a rebuild.
   with logo + square/rounded shapes, colours/invert, PNG/SVG export.
 - **Milestone 2 — Tracking ✅:** DB tables, save endpoint, `/qr/{slug}` redirect +
   logging, Scan Stats dashboard (total + 30-day chart), the Trackable toggle.
+- **v0.3.0 ✅:** adjustable export size (128–1024 px); rename/delete codes.
+- **v0.4.0 ✅:** code library (edit destination → live re-point, re-download PNG/SVG);
+  analytics (unique scans, device split, 7/30/90/all date-range); custom "GG" menu icon.
 - **v2 — Patreon layer:** open the generator to logged-in/members, per-user code
   lists, richer analytics (device/location), a store-wide 10% discount hook for
   gallusgadgets.com, optional logo saving to the Media Library, more code types

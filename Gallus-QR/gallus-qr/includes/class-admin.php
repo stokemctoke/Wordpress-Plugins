@@ -16,6 +16,9 @@ class Gallus_QR_Admin {
 	/** Hook suffix for the generator page (assets load only here). @var string */
 	private $page_hook = '';
 
+	/** Hook suffix for the Scan Stats page. @var string */
+	private $stats_hook = '';
+
 	public function __construct( Gallus_QR_Database $db ) {
 		$this->db = $db;
 	}
@@ -27,9 +30,35 @@ class Gallus_QR_Admin {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 
-		// Rename / delete handlers for the Scan Stats screen (admin-post.php).
+		// Rename / edit / delete handlers for the Scan Stats screen (admin-post.php).
 		add_action( 'admin_post_gallus_qr_rename', array( $this, 'handle_rename' ) );
+		add_action( 'admin_post_gallus_qr_destination', array( $this, 'handle_destination' ) );
 		add_action( 'admin_post_gallus_qr_delete', array( $this, 'handle_delete' ) );
+	}
+
+	/**
+	 * Handle a destination-change POST, then redirect back. The slug is
+	 * unchanged so the printed QR keeps working and now points somewhere new.
+	 */
+	public function handle_destination() {
+		$id = isset( $_POST['code_id'] ) ? absint( $_POST['code_id'] ) : 0;
+
+		if ( ! current_user_can( 'manage_options' )
+			|| ! check_admin_referer( 'gallus_qr_destination_' . $id ) ) {
+			wp_die( esc_html__( 'Permission denied.', 'gallus-qr' ) );
+		}
+
+		$destination = isset( $_POST['destination'] ) ? esc_url_raw( wp_unslash( $_POST['destination'] ) ) : '';
+
+		if ( empty( $destination ) || ! wp_http_validate_url( $destination ) ) {
+			wp_safe_redirect( add_query_arg( 'gqr_msg', 'badurl', $this->stats_url() ) );
+			exit;
+		}
+
+		$this->db->update_code_destination( $id, $destination );
+
+		wp_safe_redirect( add_query_arg( 'gqr_msg', 'retargeted', $this->stats_url() ) );
+		exit;
 	}
 
 	/**
@@ -82,7 +111,7 @@ class Gallus_QR_Admin {
 			'manage_options',
 			'gallus-qr',
 			array( $this, 'render_generator_page' ),
-			'dashicons-qrcode',
+			GALLUS_QR_URL . 'assets/img/menu-icon.png', // white "GG" mark; WP dims it to ~60% in the sidebar
 			30
 		);
 
@@ -95,7 +124,7 @@ class Gallus_QR_Admin {
 			array( $this, 'render_generator_page' )
 		);
 
-		add_submenu_page(
+		$this->stats_hook = add_submenu_page(
 			'gallus-qr',
 			__( 'Scan Stats', 'gallus-qr' ),
 			__( 'Scan Stats', 'gallus-qr' ),
@@ -111,7 +140,8 @@ class Gallus_QR_Admin {
 	 * @param string $hook The current admin page's hook suffix.
 	 */
 	public function enqueue_assets( $hook ) {
-		if ( $hook !== $this->page_hook ) {
+		// The engine is needed on both screens (generator + stats re-download).
+		if ( $hook !== $this->page_hook && $hook !== $this->stats_hook ) {
 			return;
 		}
 
@@ -123,6 +153,26 @@ class Gallus_QR_Admin {
 			true
 		);
 
+		wp_enqueue_style(
+			'gallus-qr-admin',
+			GALLUS_QR_URL . 'assets/css/admin.css',
+			array(),
+			GALLUS_QR_VERSION
+		);
+
+		// Stats screen: just the re-download helper.
+		if ( $hook === $this->stats_hook ) {
+			wp_enqueue_script(
+				'gallus-qr-stats',
+				GALLUS_QR_URL . 'assets/js/stats.js',
+				array( 'qr-code-styling' ),
+				GALLUS_QR_VERSION,
+				true
+			);
+			return;
+		}
+
+		// Generator screen: the full generator UI.
 		wp_enqueue_script(
 			'gallus-qr-generator',
 			GALLUS_QR_URL . 'assets/js/generator.js',
@@ -140,13 +190,6 @@ class Gallus_QR_Admin {
 				'nonce'   => wp_create_nonce( 'wp_rest' ),
 				'qrBase'  => esc_url_raw( home_url( '/qr/' ) ),
 			)
-		);
-
-		wp_enqueue_style(
-			'gallus-qr-admin',
-			GALLUS_QR_URL . 'assets/css/admin.css',
-			array(),
-			GALLUS_QR_VERSION
 		);
 	}
 
@@ -263,13 +306,33 @@ class Gallus_QR_Admin {
 		<?php
 	}
 
+	/** Allowed date ranges for the dashboard: query value => [label, days]. */
+	private function ranges() {
+		return array(
+			'7'   => array( __( 'Last 7 days', 'gallus-qr' ), 7 ),
+			'30'  => array( __( 'Last 30 days', 'gallus-qr' ), 30 ),
+			'90'  => array( __( 'Last 90 days', 'gallus-qr' ), 90 ),
+			'all' => array( __( 'All time', 'gallus-qr' ), 3650 ),
+		);
+	}
+
 	/**
-	 * The scan-stats dashboard: every saved code with its total and a 30-day
-	 * bar chart (rendered server-side — no chart library needed).
+	 * The scan-stats dashboard: a date-range selector plus, per code, its
+	 * editable label/destination, totals (total + unique), device split, a
+	 * bar chart, and re-download/delete actions. Charts are server-rendered.
 	 */
 	public function render_stats_page() {
-		$codes  = $this->db->get_codes_with_counts();
-		$action = esc_url( admin_url( 'admin-post.php' ) );
+		$codes   = $this->db->get_codes_with_counts();
+		$action  = esc_url( admin_url( 'admin-post.php' ) );
+		$ranges  = $this->ranges();
+
+		// Selected range (default 30 days).
+		$range_key = isset( $_GET['gqr_range'] ) ? sanitize_key( $_GET['gqr_range'] ) : '30';
+		if ( ! isset( $ranges[ $range_key ] ) ) {
+			$range_key = '30';
+		}
+		$days  = $ranges[ $range_key ][1];
+		$since = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days} days", current_time( 'timestamp' ) ) );
 		?>
 		<div class="wrap gqr-wrap">
 			<h1><?php esc_html_e( 'Gallus QR — Scan Stats', 'gallus-qr' ); ?></h1>
@@ -281,23 +344,42 @@ class Gallus_QR_Admin {
 					<?php esc_html_e( 'No trackable codes yet. Create one on the Generator screen with “Trackable” ticked.', 'gallus-qr' ); ?>
 				</p>
 			<?php else : ?>
+				<form method="get" class="gqr-range-form">
+					<input type="hidden" name="page" value="gallus-qr-stats">
+					<label>
+						<?php esc_html_e( 'Date range:', 'gallus-qr' ); ?>
+						<select name="gqr_range" onchange="this.form.submit()">
+							<?php foreach ( $ranges as $key => $info ) : ?>
+								<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $key, $range_key ); ?>>
+									<?php echo esc_html( $info[0] ); ?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+					</label>
+				</form>
+
 				<table class="widefat gqr-stats-table">
 					<thead>
 						<tr>
 							<th><?php esc_html_e( 'Label', 'gallus-qr' ); ?></th>
 							<th><?php esc_html_e( 'Short link', 'gallus-qr' ); ?></th>
 							<th><?php esc_html_e( 'Destination', 'gallus-qr' ); ?></th>
-							<th><?php esc_html_e( 'Total scans', 'gallus-qr' ); ?></th>
-							<th><?php esc_html_e( 'Last 30 days', 'gallus-qr' ); ?></th>
+							<th><?php esc_html_e( 'Scans (range)', 'gallus-qr' ); ?></th>
+							<th><?php esc_html_e( 'Devices', 'gallus-qr' ); ?></th>
+							<th><?php echo esc_html( $ranges[ $range_key ][0] ); ?></th>
 							<th><?php esc_html_e( 'Actions', 'gallus-qr' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
-						<?php foreach ( $codes as $code ) : ?>
-							<?php $short = home_url( '/qr/' . $code->slug ); ?>
+						<?php
+						foreach ( $codes as $code ) :
+							$short   = home_url( '/qr/' . $code->slug );
+							$summary = $this->db->get_range_summary( (int) $code->id, $since );
+							$devices = $this->db->get_device_breakdown( (int) $code->id, $since );
+							?>
 							<tr>
 								<td>
-									<form method="post" action="<?php echo $action; ?>" class="gqr-rename">
+									<form method="post" action="<?php echo $action; ?>" class="gqr-inline">
 										<input type="hidden" name="action" value="gallus_qr_rename">
 										<input type="hidden" name="code_id" value="<?php echo (int) $code->id; ?>">
 										<?php wp_nonce_field( 'gallus_qr_rename_' . (int) $code->id ); ?>
@@ -310,10 +392,37 @@ class Gallus_QR_Admin {
 										/qr/<?php echo esc_html( $code->slug ); ?>
 									</a>
 								</td>
-								<td class="gqr-dest"><?php echo esc_html( $code->destination ); ?></td>
-								<td class="gqr-total"><?php echo (int) $code->total_scans; ?></td>
-								<td><?php $this->render_sparkline( (int) $code->id ); ?></td>
 								<td>
+									<form method="post" action="<?php echo $action; ?>" class="gqr-inline">
+										<input type="hidden" name="action" value="gallus_qr_destination">
+										<input type="hidden" name="code_id" value="<?php echo (int) $code->id; ?>">
+										<?php wp_nonce_field( 'gallus_qr_destination_' . (int) $code->id ); ?>
+										<input type="url" name="destination" value="<?php echo esc_attr( $code->destination ); ?>" class="gqr-dest-input">
+										<button type="submit" class="button button-small"><?php esc_html_e( 'Update', 'gallus-qr' ); ?></button>
+									</form>
+								</td>
+								<td class="gqr-total">
+									<?php echo (int) $summary['total']; ?>
+									<span class="gqr-sub"><?php
+										/* translators: %d: number of unique visitors. */
+										printf( esc_html__( '%d unique', 'gallus-qr' ), (int) $summary['unique'] );
+									?></span>
+								</td>
+								<td class="gqr-devices">
+									<?php
+									$parts = array();
+									foreach ( $devices as $name => $count ) {
+										if ( $count > 0 ) {
+											$parts[] = esc_html( $name . ': ' . $count );
+										}
+									}
+									echo $parts ? implode( '<br>', $parts ) : '—'; // phpcs:ignore WordPress.Security.EscapeOutput
+									?>
+								</td>
+								<td><?php $this->render_sparkline( (int) $code->id, (int) min( $days, 90 ) ); ?></td>
+								<td class="gqr-actions">
+									<button type="button" class="button button-small gqr-dl" data-url="<?php echo esc_url( $short ); ?>" data-slug="<?php echo esc_attr( $code->slug ); ?>" data-ext="png">PNG</button>
+									<button type="button" class="button button-small gqr-dl" data-url="<?php echo esc_url( $short ); ?>" data-slug="<?php echo esc_attr( $code->slug ); ?>" data-ext="svg">SVG</button>
 									<form method="post" action="<?php echo $action; ?>" onsubmit="return confirm('<?php echo esc_js( __( 'Delete this code and all its scan data? This cannot be undone.', 'gallus-qr' ) ); ?>');">
 										<input type="hidden" name="action" value="gallus_qr_delete">
 										<input type="hidden" name="code_id" value="<?php echo (int) $code->id; ?>">
@@ -325,30 +434,40 @@ class Gallus_QR_Admin {
 						<?php endforeach; ?>
 					</tbody>
 				</table>
+				<p class="gqr-help">
+					<?php esc_html_e( 'Re-download (PNG/SVG) regenerates the code from its short link in plain black-on-white; custom styling from the generator is not stored.', 'gallus-qr' ); ?>
+				</p>
 			<?php endif; ?>
 		</div>
 		<?php
 	}
 
 	/**
-	 * Show a success notice after a rename/delete redirect.
+	 * Show a success/error notice after a redirect from an admin-post action.
 	 */
 	private function maybe_render_notice() {
 		$msg = isset( $_GET['gqr_msg'] ) ? sanitize_key( $_GET['gqr_msg'] ) : '';
-		if ( 'renamed' === $msg ) {
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Code renamed.', 'gallus-qr' ) . '</p></div>';
-		} elseif ( 'deleted' === $msg ) {
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Code deleted.', 'gallus-qr' ) . '</p></div>';
+
+		$success = array(
+			'renamed'    => __( 'Code renamed.', 'gallus-qr' ),
+			'deleted'    => __( 'Code deleted.', 'gallus-qr' ),
+			'retargeted' => __( 'Destination updated — the printed code now points to the new URL.', 'gallus-qr' ),
+		);
+
+		if ( isset( $success[ $msg ] ) ) {
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $success[ $msg ] ) . '</p></div>';
+		} elseif ( 'badurl' === $msg ) {
+			echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'That destination was not a valid URL.', 'gallus-qr' ) . '</p></div>';
 		}
 	}
 
 	/**
-	 * Render a 30-day bar chart for one code as plain HTML/CSS bars.
+	 * Render a per-day bar chart (up to 90 days) for one code as CSS bars.
 	 *
 	 * @param int $code_id
+	 * @param int $days
 	 */
-	private function render_sparkline( $code_id ) {
-		$days  = 30;
+	private function render_sparkline( $code_id, $days = 30 ) {
 		$daily = $this->db->get_daily_scans( $code_id, $days );
 
 		// Build an ordered list of the last N days, filling gaps with 0.
@@ -358,8 +477,13 @@ class Gallus_QR_Admin {
 			$counts[ $day ] = isset( $daily[ $day ] ) ? $daily[ $day ] : 0;
 		}
 
-		$max = max( 1, max( $counts ) );
-		echo '<div class="gqr-spark" role="img" aria-label="' . esc_attr__( 'Scans per day, last 30 days', 'gallus-qr' ) . '">';
+		$max   = max( 1, max( $counts ) );
+		$label = sprintf(
+			/* translators: %d: number of days. */
+			esc_attr__( 'Scans per day, last %d days', 'gallus-qr' ),
+			$days
+		);
+		echo '<div class="gqr-spark" role="img" aria-label="' . esc_attr( $label ) . '">';
 		foreach ( $counts as $day => $hits ) {
 			$pct   = (int) round( ( $hits / $max ) * 100 );
 			$title = sprintf( '%s: %d', $day, $hits );

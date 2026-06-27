@@ -128,6 +128,25 @@ class Gallus_QR_Database {
 	}
 
 	/**
+	 * Change a code's destination. The slug/short-link is unchanged, so an
+	 * already-printed QR instantly re-points — the dynamic-code superpower.
+	 *
+	 * @param int    $id
+	 * @param string $destination
+	 * @return bool
+	 */
+	public function update_code_destination( $id, $destination ) {
+		global $wpdb;
+		return false !== $wpdb->update(
+			$this->codes_table(),
+			array( 'destination' => $destination ),
+			array( 'id' => $id ),
+			array( '%s' ),
+			array( '%d' )
+		);
+	}
+
+	/**
 	 * Delete a code and all of its scan rows.
 	 *
 	 * @param int $id
@@ -223,5 +242,86 @@ class Gallus_QR_Database {
 			$map[ $row->day ] = (int) $row->hits;
 		}
 		return $map;
+	}
+
+	/**
+	 * Total + unique scan counts for a code since a given datetime.
+	 * Unique is by distinct (non-empty) IP hash.
+	 *
+	 * @param int    $code_id
+	 * @param string $since MySQL datetime ('Y-m-d H:i:s').
+	 * @return array{total:int,unique:int}
+	 */
+	public function get_range_summary( $code_id, $since ) {
+		global $wpdb;
+		$scans = $this->scans_table();
+
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT COUNT(*) AS total,
+				        COUNT( DISTINCT NULLIF( ip_hash, '' ) ) AS uniques
+				 FROM {$scans}
+				 WHERE code_id = %d AND scanned_at >= %s",
+				$code_id,
+				$since
+			)
+		);
+
+		return array(
+			'total'  => $row ? (int) $row->total : 0,
+			'unique' => $row ? (int) $row->uniques : 0,
+		);
+	}
+
+	/**
+	 * Device-type breakdown for a code since a given datetime. User-agents are
+	 * fetched and bucketed in PHP (SQL can't parse them).
+	 *
+	 * @param int    $code_id
+	 * @param string $since
+	 * @return array{Mobile:int,Tablet:int,Desktop:int}
+	 */
+	public function get_device_breakdown( $code_id, $since ) {
+		global $wpdb;
+		$scans = $this->scans_table();
+
+		$uas = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT user_agent FROM {$scans}
+				 WHERE code_id = %d AND scanned_at >= %s",
+				$code_id,
+				$since
+			)
+		);
+
+		$out = array(
+			'Mobile'  => 0,
+			'Tablet'  => 0,
+			'Desktop' => 0,
+		);
+		foreach ( $uas as $ua ) {
+			$out[ self::categorize_user_agent( $ua ) ]++;
+		}
+		return $out;
+	}
+
+	/**
+	 * Crude device bucket from a user-agent string.
+	 *
+	 * @param string $ua
+	 * @return string One of Mobile|Tablet|Desktop.
+	 */
+	public static function categorize_user_agent( $ua ) {
+		$ua = strtolower( (string) $ua );
+
+		if ( false !== strpos( $ua, 'ipad' ) || false !== strpos( $ua, 'tablet' ) ) {
+			return 'Tablet';
+		}
+		if ( false !== strpos( $ua, 'mobi' )
+			|| false !== strpos( $ua, 'android' )
+			|| false !== strpos( $ua, 'iphone' ) ) {
+			return 'Mobile';
+		}
+		return 'Desktop';
 	}
 }
