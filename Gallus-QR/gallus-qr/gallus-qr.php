@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Gallus QR
  * Plugin URI:        https://stokemctoke.com
- * Description:       Free, self-hosted custom QR code generator — centre logo, custom shapes, adjustable export size, PNG/SVG export, editable dynamic codes, and scan analytics.
- * Version:           0.4.0
+ * Description:       Free, self-hosted custom QR code generator — centre logo, custom shapes, adjustable export size, PNG/SVG export, editable dynamic codes, scan analytics, and faithful re-download of saved designs.
+ * Version:           0.5.0
  * Author:            Gallus Gadgets
  * Author URI:        https://gallusgadgets.com
  * License:           GPL-2.0-or-later
@@ -20,7 +20,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Handy constants so other files can find themselves and bust asset caches.
-define( 'GALLUS_QR_VERSION', '0.4.0' );
+define( 'GALLUS_QR_VERSION', '0.5.0' );
+define( 'GALLUS_QR_DB_VERSION', '2' );                       // bump when the schema changes
 define( 'GALLUS_QR_PATH', plugin_dir_path( __FILE__ ) );   // /…/gallus-qr/
 define( 'GALLUS_QR_URL', plugin_dir_url( __FILE__ ) );      // https://…/gallus-qr/
 
@@ -48,6 +49,11 @@ register_deactivation_hook( __FILE__, 'flush_rewrite_rules' );
 // Boot the plugin once WordPress is ready.
 add_action( 'plugins_loaded', static function () {
 	$db = new Gallus_QR_Database();
+
+	// Run schema upgrades in place — no manual reactivation needed after an update.
+	if ( get_option( 'gallus_qr_db_version' ) !== GALLUS_QR_DB_VERSION ) {
+		$db->create_tables();
+	}
 
 	( new Gallus_QR_Redirect( $db ) )->init();
 	( new Gallus_QR_REST( $db ) )->init();

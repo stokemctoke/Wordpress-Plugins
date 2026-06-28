@@ -52,8 +52,24 @@
 		return Math.max( 128, Math.min( 1024, n ) );
 	}
 
-	function buildOptions() {
-		var size = exportSize();
+	// The persistable design — everything needed to faithfully re-draw this code.
+	function currentDesign() {
+		return {
+			dotStyle:    els.dotStyle.value,
+			cornerStyle: els.cornerStyle.value,
+			fg:          els.fg.value,
+			bg:          els.bg.value,
+			size:        exportSize(),
+			logo:        logoDataUrl || ''
+		};
+	}
+
+	// The on-screen preview is always this many px; the slider only affects the
+	// downloaded file. This keeps the preview a constant size in its window.
+	var PREVIEW_SIZE = 320;
+
+	function buildOptions( forExport ) {
+		var size = forExport ? exportSize() : PREVIEW_SIZE;
 		var opts = {
 			width: size,
 			height: size,
@@ -91,11 +107,11 @@
 		return opts;
 	}
 
-	var qrCode = new QRCodeStyling( buildOptions() );
+	var qrCode = new QRCodeStyling( buildOptions( false ) );
 	qrCode.append( els.canvas );
 
 	function render() {
-		qrCode.update( buildOptions() );
+		qrCode.update( buildOptions( false ) );
 	}
 
 	// Typing in the URL field clears any previously-saved short link, because
@@ -146,9 +162,9 @@
 		render();
 	} );
 
+	// Size only affects the export, so just update the readout — no re-render.
 	els.size.addEventListener( 'input', function () {
 		els.sizeValue.textContent = exportSize();
-		render();
 	} );
 
 	// --- Tracking ------------------------------------------------------------
@@ -186,7 +202,8 @@
 			},
 			body: JSON.stringify( {
 				title: els.title.value,
-				destination: destination
+				destination: destination,
+				design: currentDesign()
 			} )
 		} )
 			.then( function ( res ) {
@@ -224,10 +241,13 @@
 
 	// --- Downloads -----------------------------------------------------------
 
-	els.dlPng.addEventListener( 'click', function () {
-		qrCode.download( { name: 'gallus-qr', extension: 'png' } );
-	} );
-	els.dlSvg.addEventListener( 'click', function () {
-		qrCode.download( { name: 'gallus-qr', extension: 'svg' } );
-	} );
+	// Export from a fresh instance at the chosen resolution, leaving the
+	// fixed-size preview untouched.
+	function downloadAs( ext ) {
+		var exporter = new QRCodeStyling( buildOptions( true ) );
+		exporter.download( { name: 'gallus-qr', extension: ext } );
+	}
+
+	els.dlPng.addEventListener( 'click', function () { downloadAs( 'png' ); } );
+	els.dlSvg.addEventListener( 'click', function () { downloadAs( 'svg' ); } );
 } )();

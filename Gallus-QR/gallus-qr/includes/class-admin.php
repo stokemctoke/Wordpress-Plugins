@@ -29,6 +29,7 @@ class Gallus_QR_Admin {
 	public function init() {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'admin_head', array( $this, 'menu_icon_css' ) );
 
 		// Rename / edit / delete handlers for the Scan Stats screen (admin-post.php).
 		add_action( 'admin_post_gallus_qr_rename', array( $this, 'handle_rename' ) );
@@ -135,6 +136,23 @@ class Gallus_QR_Admin {
 	}
 
 	/**
+	 * Tame the custom "GG" menu icon: WordPress shows custom icons large and at
+	 * 60% opacity (washed out). Force a small, pure-white, centred icon.
+	 */
+	public function menu_icon_css() {
+		?>
+		<style>
+			#adminmenu #toplevel_page_gallus-qr .wp-menu-image img {
+				width: 14px;
+				height: auto;
+				padding-top: 10px;
+				opacity: 1;
+			}
+		</style>
+		<?php
+	}
+
+	/**
 	 * Load the engine, generator script and styles — but only on our page.
 	 *
 	 * @param string $hook The current admin page's hook suffix.
@@ -169,6 +187,18 @@ class Gallus_QR_Admin {
 				GALLUS_QR_VERSION,
 				true
 			);
+
+			// Map slug => stored design so re-downloads match the original.
+			$designs = array();
+			foreach ( $this->db->get_codes_with_counts() as $code ) {
+				if ( ! empty( $code->design ) ) {
+					$decoded = json_decode( $code->design, true );
+					if ( is_array( $decoded ) ) {
+						$designs[ $code->slug ] = $decoded;
+					}
+				}
+			}
+			wp_localize_script( 'gallus-qr-stats', 'GallusQRStats', array( 'designs' => $designs ) );
 			return;
 		}
 
@@ -435,7 +465,7 @@ class Gallus_QR_Admin {
 					</tbody>
 				</table>
 				<p class="gqr-help">
-					<?php esc_html_e( 'Re-download (PNG/SVG) regenerates the code from its short link in plain black-on-white; custom styling from the generator is not stored.', 'gallus-qr' ); ?>
+					<?php esc_html_e( 'Re-download (PNG/SVG) regenerates the code from its short link using the design you saved it with. Codes saved before v0.5.0 come out plain black-on-white.', 'gallus-qr' ); ?>
 				</p>
 			<?php endif; ?>
 		</div>

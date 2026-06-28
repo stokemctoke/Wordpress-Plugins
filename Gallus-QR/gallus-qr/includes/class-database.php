@@ -44,6 +44,7 @@ class Gallus_QR_Database {
 			title varchar(255) NOT NULL DEFAULT '',
 			destination text NOT NULL,
 			trackable tinyint(1) NOT NULL DEFAULT 1,
+			design longtext NULL,
 			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY  (id),
 			UNIQUE KEY slug (slug)
@@ -62,6 +63,9 @@ class Gallus_QR_Database {
 
 		dbDelta( $sql_codes );
 		dbDelta( $sql_scans );
+
+		// Record the schema version so upgrades can run without reactivation.
+		update_option( 'gallus_qr_db_version', GALLUS_QR_DB_VERSION );
 	}
 
 	/**
@@ -87,9 +91,10 @@ class Gallus_QR_Database {
 	 * @param string $title       Human label.
 	 * @param string $destination Real target URL.
 	 * @param bool   $trackable   Whether scans should be counted.
+	 * @param string $design      Normalised design JSON (or '' for none).
 	 * @return string|false
 	 */
-	public function insert_code( $title, $destination, $trackable = true ) {
+	public function insert_code( $title, $destination, $trackable = true, $design = '' ) {
 		global $wpdb;
 
 		$slug = $this->generate_unique_slug();
@@ -101,9 +106,10 @@ class Gallus_QR_Database {
 				'title'       => $title,
 				'destination' => $destination,
 				'trackable'   => $trackable ? 1 : 0,
+				'design'      => $design,
 				'created_at'  => current_time( 'mysql' ),
 			),
-			array( '%s', '%s', '%s', '%d', '%s' )
+			array( '%s', '%s', '%s', '%d', '%s', '%s' )
 		);
 
 		return $ok ? $slug : false;

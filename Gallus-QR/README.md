@@ -5,9 +5,9 @@ clone of sites like QRCode Monkey, with optional scan tracking (the part the pai
 sites charge for).
 
 **Brand:** Gallus QR · **Runs on:** stokemctoke.com (self-hosted WordPress) ·
-**Status:** v0.4.0 — generator ✅ · scan tracking ✅ (verified live) · export-size ✅ ·
-code library (rename / edit destination / delete / re-download) ✅ · analytics (unique +
-device + date-range) ✅ · Patreon layer (v2) next.
+**Status:** v0.5.0 — generator ✅ · scan tracking ✅ (verified live) · export-size ✅ ·
+code library (rename / edit destination / delete / **faithful re-download**) ✅ ·
+analytics (unique + device + date-range) ✅ · Patreon layer (v2) next.
 
 > Note: the brand name is "Gallus QR" even though it lives on stokemctoke.com.
 > gallusgadgets.com stays dedicated to sales/info. The plugin name and the host
@@ -29,7 +29,7 @@ often each one is scanned.
 - **Scan tracking** — per code: total + unique scans, device split (mobile/tablet/desktop),
   a per-day bar chart, and a date-range selector (7/30/90/all).
 - **Code library** — from Scan Stats: rename, **edit the destination** (printed code
-  re-points instantly), re-download PNG/SVG, or delete a code.
+  re-points instantly), **re-download** PNG/SVG using the code's saved design, or delete.
 - **URLs only** for now; other types (WiFi, vCard, text…) come later.
 - **You only** (wp-admin) for now; a Patreon/members layer is planned for v2.
 
@@ -119,6 +119,7 @@ gallus-qr/
 | `destination` | the real target URL |
 | `title` | your label |
 | `trackable` | dynamic vs direct |
+| `design` | JSON of the saved look (shapes/colours/size/logo) for faithful re-download |
 | `created_at` | timestamp |
 
 **`qr_scans`**
@@ -145,6 +146,9 @@ already has room for v2 breakdowns (device, location) without a rebuild.
 - **v0.3.0 ✅:** adjustable export size (128–1024 px); rename/delete codes.
 - **v0.4.0 ✅:** code library (edit destination → live re-point, re-download PNG/SVG);
   analytics (unique scans, device split, 7/30/90/all date-range); custom "GG" menu icon.
+- **v0.5.0 ✅:** persist each code's design (shapes/colours/size/logo) so re-downloads
+  match the original; in-place schema upgrade (no reactivation); preview decoupled from
+  export size; smaller pure-white menu icon.
 - **v2 — Patreon layer:** open the generator to logged-in/members, per-user code
   lists, richer analytics (device/location), a store-wide 10% discount hook for
   gallusgadgets.com, optional logo saving to the Media Library, more code types
@@ -161,7 +165,9 @@ already has room for v2 breakdowns (device, location) without a rebuild.
 - **Trackable toggle:** per-code static-vs-dynamic choice (for the permanent-PCB case).
 - **Shapes for v1:** square + rounded only; expand when opening to users.
 - **Gradients:** built in but off by default (default = black-on-white / inverted).
-- **Logo storage:** not saved server-side for now (browser-only); Media Library save is a v2 add.
+- **Logo storage:** as of v0.5.0, a trackable code's logo is stored (base64 in its `design`
+  JSON) so re-downloads are faithful. Static (non-saved) codes stay browser-only. A proper
+  Media Library integration is still a v2 add.
 - **Audience:** just you (wp-admin) for v1; Patreon/members for v2.
 
 ---
