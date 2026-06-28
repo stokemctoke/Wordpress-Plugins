@@ -7,8 +7,8 @@ sites charge for).
 **Brand:** Gallus QR · **Runs on:** stokemctoke.com (self-hosted WordPress) ·
 **Status:** **v1.0.0 — first stable release.** 🎉 Generator, scan tracking, code library
 (rename / edit destination / delete / faithful re-download), analytics (unique + device +
-date-range), and the Direct/Trackable clarity UX — all built and verified. Next arc: the
-Patreon/front-end layer (v2).
+date-range), and the Direct/Trackable clarity UX — all built and verified. **Free and open
+source for all** — no subscriptions, ever.
 
 > Note: the brand name is "Gallus QR" even though it lives on stokemctoke.com.
 > gallusgadgets.com stays dedicated to sales/info. The plugin name and the host
@@ -32,7 +32,8 @@ often each one is scanned.
 - **Code library** — from Scan Stats: rename, **edit the destination** (printed code
   re-points instantly), **re-download** PNG/SVG using the code's saved design, or delete.
 - **URLs only** for now; other types (WiFi, vCard, text…) come later.
-- **You only** (wp-admin) for now; a Patreon/members layer is planned for v2.
+- **Admin-only** for now; opening the generator to other users is a possible future
+  (free) addition.
 
 ---
 
@@ -66,7 +67,7 @@ comment WordPress reads. It then "hooks" into WordPress:
 - **Rewrite rule** — teaches WP that `/qr/{slug}` isn't a normal page; route it to
   our redirect handler.
 - **Activation hook** — creates the database tables and flushes the rewrite rule.
-- **Shortcode** `[qr_generator]` — *planned for the Patreon/front-end layer (v2)*; not
+- **Shortcode** `[qr_generator]` — *planned for a future front-end version*; not
   registered yet, the tool currently lives in wp-admin.
 
 QR **drawing** happens in the browser via the open-source [`qr-code-styling`]
@@ -158,16 +159,15 @@ already has room for v2 breakdowns (device, location) without a rebuild.
   (so you can't grab an untracked code thinking it's tracked).
 - **v1.0.0 ✅ — first stable release:** everything above, tested on the live site.
   Repo collapsed to a single `master` branch at this release.
-- **v2 — Patreon layer:** open the generator to logged-in/members, per-user code
-  lists, richer analytics (device/location), a store-wide 10% discount hook for
-  gallusgadgets.com, optional logo saving to the Media Library, more code types
-  (WiFi, vCard, text), more shapes.
+- **Future ideas (all free & open source):** a front-end `[qr_generator]` shortcode
+  for any user, more code types (WiFi, vCard, plain text, email), more shapes, richer
+  analytics (location, repeat vs new), and saving logos to the Media Library.
 
 ---
 
 ## Locked decisions
 
-- **Name / slug:** Gallus QR · plugin folder `gallus-qr` · shortcode `[qr_generator]` reserved for v2.
+- **Name / slug:** Gallus QR · plugin folder `gallus-qr` · shortcode `[qr_generator]` reserved for a future front-end version.
 - **Host:** stokemctoke.com — self-hosted WordPress, Ubuntu 24.04 + CloudPanel.
 - **Redirect path:** `/qr/{slug}`.
 - **Permalinks:** "pretty" (not Plain) — required for `/qr/{slug}` to route. ✅
@@ -176,8 +176,9 @@ already has room for v2 breakdowns (device, location) without a rebuild.
 - **Gradients:** built in but off by default (default = black-on-white / inverted).
 - **Logo storage:** as of v0.5.0, a trackable code's logo is stored (base64 in its `design`
   JSON) so re-downloads are faithful. Static (non-saved) codes stay browser-only. A proper
-  Media Library integration is still a v2 add.
-- **Audience:** just you (wp-admin) for v1; Patreon/members for v2.
+  Media Library integration is a possible future add.
+- **Audience:** admin-only for now; opening to other users is a possible future addition.
+- **Licensing:** free and open source (GPL-2.0-or-later) for everyone — no subscriptions, no paywalls.
 
 ---
 
