@@ -1,10 +1,14 @@
 /**
  * Gallus QR — live generator UI.
  *
- * Draws the QR with the bundled qr-code-styling engine and re-renders on every
- * change. Static codes encode the URL directly (M1). Trackable codes are first
- * saved via the REST endpoint, which returns a short /qr/{slug} link; the QR
- * then encodes that link so each scan can be counted (M2).
+ * Two explicit modes, surfaced in the UI so it's always clear what the QR does:
+ *   • Direct    — encodes the URL itself. Works forever, no tracking.
+ *   • Trackable — saved via REST, encodes a short /qr/{slug} link that routes
+ *                 through this site and counts every scan.
+ *
+ * A badge + an "Encodes →" readout show the code's true nature, and downloads
+ * are blocked in Trackable mode until the code is saved (so you can never grab
+ * an untracked code while believing it's tracked).
  */
 ( function () {
 	'use strict';
@@ -14,45 +18,72 @@
 		return;
 	}
 
-	// Settings injected by wp_localize_script (REST url, nonce, /qr/ base).
 	var cfg = window.GallusQR || {};
 
 	var $ = function ( id ) { return document.getElementById( id ); };
 
 	var els = {
-		data:        $( 'gqr-data' ),
-		dotStyle:    $( 'gqr-dot-style' ),
-		cornerStyle: $( 'gqr-corner-style' ),
-		fg:          $( 'gqr-fg' ),
-		bg:          $( 'gqr-bg' ),
-		invert:      $( 'gqr-invert' ),
-		logo:        $( 'gqr-logo' ),
-		logoClear:   $( 'gqr-logo-clear' ),
-		size:        $( 'gqr-size' ),
-		sizeValue:   $( 'gqr-size-value' ),
-		canvas:      $( 'gqr-canvas' ),
-		dlPng:       $( 'gqr-download-png' ),
-		dlSvg:       $( 'gqr-download-svg' ),
-		trackable:   $( 'gqr-trackable' ),
-		trackFields: $( 'gqr-track-fields' ),
-		title:       $( 'gqr-title' ),
-		save:        $( 'gqr-save' ),
-		saveResult:  $( 'gqr-save-result' )
+		data:         $( 'gqr-data' ),
+		dotStyle:     $( 'gqr-dot-style' ),
+		cornerStyle:  $( 'gqr-corner-style' ),
+		fg:           $( 'gqr-fg' ),
+		bg:           $( 'gqr-bg' ),
+		invert:       $( 'gqr-invert' ),
+		logo:         $( 'gqr-logo' ),
+		logoClear:    $( 'gqr-logo-clear' ),
+		size:         $( 'gqr-size' ),
+		sizeValue:    $( 'gqr-size-value' ),
+		modeDirect:   $( 'gqr-mode-direct' ),
+		modeTrack:    $( 'gqr-mode-trackable' ),
+		modeHelp:     $( 'gqr-mode-help' ),
+		trackFields:  $( 'gqr-track-fields' ),
+		title:        $( 'gqr-title' ),
+		save:         $( 'gqr-save' ),
+		saveResult:   $( 'gqr-save-result' ),
+		canvas:       $( 'gqr-canvas' ),
+		badge:        $( 'gqr-badge' ),
+		encodes:      $( 'gqr-encodes' ),
+		dlPng:        $( 'gqr-download-png' ),
+		dlSvg:        $( 'gqr-download-svg' ),
+		downloadHint: $( 'gqr-download-hint' )
 	};
 
-	// Logo data URL (browser-only). And the encoded value: either the typed URL
-	// or, once a trackable code is saved, the short /qr/{slug} link.
-	var logoDataUrl = null;
-	var encodedValue = els.data.value;
+	// --- State ----------------------------------------------------------------
 
-	// Clamp the size slider to the supported 128–1024 range.
+	var mode        = 'direct';   // 'direct' | 'trackable'
+	var saved       = false;      // a trackable code has been saved
+	var savedUrl    = '';         // its short /qr/{slug} link
+	var savedFor    = '';         // the destination it was saved for
+	var logoDataUrl = null;
+
+	var PREVIEW_SIZE = 320;
+
+	// Host shown in the "tracked via …" badge (e.g. stokemctoke.com).
+	var trackHost = ( function () {
+		try { return new URL( cfg.qrBase ).host; } catch ( e ) { return 'this site'; }
+	} )();
+
+	// What the QR currently encodes, given the mode/saved state.
+	function encodedValue() {
+		if ( mode === 'trackable' && saved ) {
+			return savedUrl;
+		}
+		return els.data.value;
+	}
+
+	// True when a download would NOT be the tracked code the user expects.
+	function downloadBlocked() {
+		return mode === 'trackable' && ! saved;
+	}
+
+	// --- QR rendering ---------------------------------------------------------
+
 	function exportSize() {
 		var n = parseInt( els.size.value, 10 );
 		if ( isNaN( n ) ) { n = 512; }
 		return Math.max( 128, Math.min( 1024, n ) );
 	}
 
-	// The persistable design — everything needed to faithfully re-draw this code.
 	function currentDesign() {
 		return {
 			dotStyle:    els.dotStyle.value,
@@ -64,46 +95,24 @@
 		};
 	}
 
-	// The on-screen preview is always this many px; the slider only affects the
-	// downloaded file. This keeps the preview a constant size in its window.
-	var PREVIEW_SIZE = 320;
-
 	function buildOptions( forExport ) {
 		var size = forExport ? exportSize() : PREVIEW_SIZE;
 		var opts = {
 			width: size,
 			height: size,
 			type: 'svg',
-			data: encodedValue || ' ',
+			data: encodedValue() || ' ',
 			margin: 8,
-			qrOptions: {
-				errorCorrectionLevel: logoDataUrl ? 'H' : 'M'
-			},
-			dotsOptions: {
-				type: els.dotStyle.value,
-				color: els.fg.value
-			},
-			cornersSquareOptions: {
-				type: els.cornerStyle.value
-			},
-			cornersDotOptions: {
-				type: els.cornerStyle.value === 'extra-rounded' ? 'dot' : 'square'
-			},
-			backgroundOptions: {
-				color: els.bg.value
-			}
+			qrOptions: { errorCorrectionLevel: logoDataUrl ? 'H' : 'M' },
+			dotsOptions: { type: els.dotStyle.value, color: els.fg.value },
+			cornersSquareOptions: { type: els.cornerStyle.value },
+			cornersDotOptions: { type: els.cornerStyle.value === 'extra-rounded' ? 'dot' : 'square' },
+			backgroundOptions: { color: els.bg.value }
 		};
-
 		if ( logoDataUrl ) {
 			opts.image = logoDataUrl;
-			opts.imageOptions = {
-				crossOrigin: 'anonymous',
-				margin: 6,
-				imageSize: 0.4,
-				hideBackgroundDots: true
-			};
+			opts.imageOptions = { crossOrigin: 'anonymous', margin: 6, imageSize: 0.4, hideBackgroundDots: true };
 		}
-
 		return opts;
 	}
 
@@ -127,7 +136,6 @@
 		svg.style.height = 'auto';
 	}
 
-	// Re-apply whenever the engine replaces the SVG (every update()).
 	new MutationObserver( fixSvgScaling ).observe( els.canvas, { childList: true } );
 	qrCode.append( els.canvas );
 	requestAnimationFrame( fixSvgScaling );
@@ -136,23 +144,80 @@
 		qrCode.update( buildOptions( false ) );
 	}
 
-	// Typing in the URL field clears any previously-saved short link, because
-	// the code now points somewhere else.
-	function onDataChange() {
-		encodedValue = els.data.value;
-		clearSaveResult();
+	// --- UI sync --------------------------------------------------------------
+
+	// Reflect the whole state into badge / readout / buttons, then re-render.
+	function updateUI() {
+		var isTrack = mode === 'trackable';
+
+		// Mode buttons.
+		els.modeDirect.classList.toggle( 'is-active', ! isTrack );
+		els.modeTrack.classList.toggle( 'is-active', isTrack );
+		els.modeDirect.setAttribute( 'aria-checked', String( ! isTrack ) );
+		els.modeTrack.setAttribute( 'aria-checked', String( isTrack ) );
+		els.trackFields.hidden = ! isTrack;
+
+		els.modeHelp.textContent = isTrack
+			? 'Routes through your site so every scan is counted. Save it to generate the tracked link.'
+			: 'Encodes your URL directly. Works forever, but scans can’t be counted — best for permanent things like PCBs.';
+
+		// Badge.
+		els.badge.classList.remove( 'gqr-badge--direct', 'gqr-badge--tracked', 'gqr-badge--pending' );
+		if ( ! isTrack ) {
+			els.badge.textContent = '○ Direct — not tracked';
+			els.badge.classList.add( 'gqr-badge--direct' );
+		} else if ( saved ) {
+			els.badge.textContent = '● Tracked · via ' + trackHost;
+			els.badge.classList.add( 'gqr-badge--tracked' );
+		} else {
+			els.badge.textContent = '○ Trackable — not saved yet';
+			els.badge.classList.add( 'gqr-badge--pending' );
+		}
+
+		// Encodes readout.
+		if ( ! isTrack ) {
+			els.encodes.textContent = 'Encodes → ' + ( els.data.value || '—' );
+		} else if ( saved ) {
+			els.encodes.textContent = 'Encodes → ' + savedUrl + '\n↳ ' + els.data.value;
+		} else {
+			els.encodes.textContent = 'Save to generate your tracked link, then download.';
+		}
+
+		// Downloads.
+		var block = downloadBlocked();
+		els.dlPng.disabled = block;
+		els.dlSvg.disabled = block;
+		els.downloadHint.hidden = ! block;
+		if ( block ) {
+			els.downloadHint.textContent = 'Save first — otherwise you’d download an untracked code.';
+		}
+
 		render();
 	}
 
-	function clearSaveResult() {
+	function setMode( m ) {
+		mode = m;
+		updateUI();
+	}
+
+	function clearSaveError() {
 		els.saveResult.hidden = true;
 		els.saveResult.textContent = '';
 		els.saveResult.classList.remove( 'is-error' );
 	}
 
-	// --- Wire up the design controls -----------------------------------------
+	// --- Design controls ------------------------------------------------------
 
-	els.data.addEventListener( 'input', onDataChange );
+	els.data.addEventListener( 'input', function () {
+		// Editing the URL invalidates a previously-saved trackable link.
+		if ( saved && els.data.value !== savedFor ) {
+			saved = false;
+			savedUrl = '';
+		}
+		clearSaveError();
+		updateUI();
+	} );
+
 	els.dotStyle.addEventListener( 'change', render );
 	els.cornerStyle.addEventListener( 'change', render );
 	els.fg.addEventListener( 'input', render );
@@ -167,14 +232,9 @@
 
 	els.logo.addEventListener( 'change', function ( e ) {
 		var file = e.target.files && e.target.files[ 0 ];
-		if ( ! file ) {
-			return;
-		}
+		if ( ! file ) { return; }
 		var reader = new FileReader();
-		reader.onload = function ( ev ) {
-			logoDataUrl = ev.target.result;
-			render();
-		};
+		reader.onload = function ( ev ) { logoDataUrl = ev.target.result; render(); };
 		reader.readAsDataURL( file );
 	} );
 
@@ -184,33 +244,21 @@
 		render();
 	} );
 
-	// Size only affects the export, so just update the readout — no re-render.
 	els.size.addEventListener( 'input', function () {
 		els.sizeValue.textContent = exportSize();
 	} );
 
-	// --- Tracking ------------------------------------------------------------
+	// --- Mode switch ----------------------------------------------------------
 
-	els.trackable.addEventListener( 'change', function () {
-		els.trackFields.hidden = ! els.trackable.checked;
-		// Switching off restores the directly-encoded URL.
-		if ( ! els.trackable.checked ) {
-			encodedValue = els.data.value;
-			clearSaveResult();
-			render();
-		}
-	} );
+	els.modeDirect.addEventListener( 'click', function () { setMode( 'direct' ); } );
+	els.modeTrack.addEventListener( 'click', function () { setMode( 'trackable' ); } );
+
+	// --- Save (trackable) -----------------------------------------------------
 
 	els.save.addEventListener( 'click', function () {
 		var destination = els.data.value;
-		if ( ! destination ) {
-			showSaveError( 'Enter a URL first.' );
-			return;
-		}
-		if ( ! cfg.restUrl ) {
-			showSaveError( 'Tracking is unavailable (REST config missing).' );
-			return;
-		}
+		if ( ! destination ) { return showSaveError( 'Enter a URL first.' ); }
+		if ( ! cfg.restUrl ) { return showSaveError( 'Tracking is unavailable (REST config missing).' ); }
 
 		els.save.disabled = true;
 		els.save.textContent = 'Saving…';
@@ -218,37 +266,23 @@
 		fetch( cfg.restUrl, {
 			method: 'POST',
 			credentials: 'same-origin',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-WP-Nonce': cfg.nonce
-			},
-			body: JSON.stringify( {
-				title: els.title.value,
-				destination: destination,
-				design: currentDesign()
-			} )
+			headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce },
+			body: JSON.stringify( { title: els.title.value, destination: destination, design: currentDesign() } )
 		} )
 			.then( function ( res ) {
-				return res.json().then( function ( body ) {
-					return { ok: res.ok, body: body };
-				} );
+				return res.json().then( function ( body ) { return { ok: res.ok, body: body }; } );
 			} )
 			.then( function ( result ) {
 				if ( ! result.ok ) {
 					throw new Error( ( result.body && result.body.message ) || 'Save failed.' );
 				}
-				// Encode the short link from now on, and re-render.
-				encodedValue = result.body.url;
-				render();
-
-				els.saveResult.hidden = false;
-				els.saveResult.classList.remove( 'is-error' );
-				els.saveResult.textContent =
-					'Trackable! Scans will count. This QR now points to ' + result.body.url;
+				saved = true;
+				savedUrl = result.body.url;
+				savedFor = destination;
+				clearSaveError();
+				updateUI();
 			} )
-			.catch( function ( err ) {
-				showSaveError( err.message );
-			} )
+			.catch( function ( err ) { showSaveError( err.message ); } )
 			.finally( function () {
 				els.save.disabled = false;
 				els.save.textContent = 'Save & make trackable';
@@ -261,15 +295,18 @@
 		els.saveResult.textContent = msg;
 	}
 
-	// --- Downloads -----------------------------------------------------------
+	// --- Downloads ------------------------------------------------------------
 
-	// Export from a fresh instance at the chosen resolution, leaving the
-	// fixed-size preview untouched.
 	function downloadAs( ext ) {
+		if ( downloadBlocked() ) { return; }
 		var exporter = new QRCodeStyling( buildOptions( true ) );
 		exporter.download( { name: 'gallus-qr', extension: ext } );
 	}
 
 	els.dlPng.addEventListener( 'click', function () { downloadAs( 'png' ); } );
 	els.dlSvg.addEventListener( 'click', function () { downloadAs( 'svg' ); } );
+
+	// --- Init -----------------------------------------------------------------
+
+	updateUI();
 } )();

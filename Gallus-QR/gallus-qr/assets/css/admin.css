@@ -112,6 +112,81 @@
 	gap: 0.75rem;
 }
 
+/* --- Mode switch (Direct / Trackable) ------------------------------------- */
+
+.gqr-mode {
+	display: inline-flex;
+	border: 1px solid #c3c4c7;
+	border-radius: 6px;
+	overflow: hidden;
+}
+
+.gqr-mode-btn {
+	border: 0;
+	background: #f6f7f7;
+	color: #50575e;
+	padding: 6px 16px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.gqr-mode-btn + .gqr-mode-btn {
+	border-left: 1px solid #c3c4c7;
+}
+
+.gqr-mode-btn.is-active {
+	background: #2271b1;
+	color: #fff;
+}
+
+/* --- Preview badge -------------------------------------------------------- */
+
+.gqr-badge {
+	font-weight: 600;
+	font-size: 0.82rem;
+	padding: 3px 10px;
+	border-radius: 999px;
+}
+
+.gqr-badge--direct {
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+.gqr-badge--tracked {
+	background: #edfaef;
+	color: #007a1f;
+	border: 1px solid #00a32a;
+}
+
+.gqr-badge--pending {
+	background: #fcf9e8;
+	color: #8a6d00;
+	border: 1px solid #dba617;
+}
+
+/* "Encodes →" routing readout under the preview. */
+.gqr-encodes {
+	margin: 0;
+	max-width: 320px;
+	font-size: 0.78rem;
+	line-height: 1.5;
+	color: #50575e;
+	white-space: pre-line;
+	word-break: break-all;
+	text-align: center;
+}
+
+.gqr-download-hint {
+	max-width: 320px;
+	text-align: center;
+	color: #8a6d00;
+}
+
+.gqr-downloads .button[disabled] {
+	cursor: not-allowed;
+}
+
 /* --- Tracking controls ---------------------------------------------------- */
 
 .gqr-track {

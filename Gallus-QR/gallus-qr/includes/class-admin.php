@@ -238,6 +238,19 @@ class Gallus_QR_Admin {
 			<div class="gqr-layout">
 				<!-- LEFT: controls -->
 				<div class="gqr-controls">
+					<div class="gqr-field">
+						<span><?php esc_html_e( 'Code type', 'gallus-qr' ); ?></span>
+						<div class="gqr-mode" role="radiogroup" aria-label="<?php esc_attr_e( 'Code type', 'gallus-qr' ); ?>">
+							<button type="button" class="gqr-mode-btn is-active" id="gqr-mode-direct" data-mode="direct" role="radio" aria-checked="true">
+								<?php esc_html_e( 'Direct', 'gallus-qr' ); ?>
+							</button>
+							<button type="button" class="gqr-mode-btn" id="gqr-mode-trackable" data-mode="trackable" role="radio" aria-checked="false">
+								<?php esc_html_e( 'Trackable', 'gallus-qr' ); ?>
+							</button>
+						</div>
+						<span class="gqr-help" id="gqr-mode-help"></span>
+					</div>
+
 					<label class="gqr-field">
 						<span><?php esc_html_e( 'Content (URL)', 'gallus-qr' ); ?></span>
 						<input type="url" id="gqr-data" placeholder="https://stokemctoke.com" value="https://stokemctoke.com">
@@ -296,32 +309,24 @@ class Gallus_QR_Admin {
 						<span class="gqr-help"><?php esc_html_e( 'Downloaded PNG resolution (128–1024). SVG stays vector.', 'gallus-qr' ); ?></span>
 					</label>
 
-					<!-- Tracking -->
-					<div class="gqr-track">
-						<label class="gqr-checkbox">
-							<input type="checkbox" id="gqr-trackable">
-							<span><?php esc_html_e( 'Trackable — count scans (dynamic code)', 'gallus-qr' ); ?></span>
+					<!-- Tracking (shown only in Trackable mode) -->
+					<div id="gqr-track-fields" class="gqr-track-fields" hidden>
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'Label (for your stats)', 'gallus-qr' ); ?></span>
+							<input type="text" id="gqr-title" placeholder="<?php esc_attr_e( 'e.g. Business card', 'gallus-qr' ); ?>">
 						</label>
-						<p class="gqr-help">
-							<?php esc_html_e( 'On: the QR points at this site and each scan is counted. Off: the QR encodes your URL directly — works forever but cannot be counted (best for permanent hardware).', 'gallus-qr' ); ?>
-						</p>
-
-						<div id="gqr-track-fields" class="gqr-track-fields" hidden>
-							<label class="gqr-field">
-								<span><?php esc_html_e( 'Label (for your stats)', 'gallus-qr' ); ?></span>
-								<input type="text" id="gqr-title" placeholder="<?php esc_attr_e( 'e.g. Business card', 'gallus-qr' ); ?>">
-							</label>
-							<button type="button" id="gqr-save" class="button button-secondary">
-								<?php esc_html_e( 'Save &amp; make trackable', 'gallus-qr' ); ?>
-							</button>
-							<p id="gqr-save-result" class="gqr-save-result" hidden></p>
-						</div>
+						<button type="button" id="gqr-save" class="button button-secondary">
+							<?php esc_html_e( 'Save &amp; make trackable', 'gallus-qr' ); ?>
+						</button>
+						<p id="gqr-save-result" class="gqr-save-result" hidden></p>
 					</div>
 				</div>
 
 				<!-- RIGHT: live preview + downloads -->
 				<div class="gqr-preview">
+					<div id="gqr-badge" class="gqr-badge"></div>
 					<div id="gqr-canvas" class="gqr-canvas"></div>
+					<p id="gqr-encodes" class="gqr-encodes"></p>
 					<div class="gqr-downloads">
 						<button type="button" id="gqr-download-png" class="button button-primary">
 							<?php esc_html_e( 'Download PNG', 'gallus-qr' ); ?>
@@ -330,6 +335,7 @@ class Gallus_QR_Admin {
 							<?php esc_html_e( 'Download SVG', 'gallus-qr' ); ?>
 						</button>
 					</div>
+					<p id="gqr-download-hint" class="gqr-help gqr-download-hint" hidden></p>
 				</div>
 			</div>
 		</div>
