@@ -132,10 +132,10 @@ gallus-qr/
 | `code_id` | which code |
 | `scanned_at` | timestamp |
 | `ip_hash` | hashed IP, for unique-ish counts |
-| `user_agent` | device — for v2 breakdowns |
+| `user_agent` | device — for future breakdowns |
 
 Total scans = count rows for a code. Scans-over-time = group by day. The schema
-already has room for v2 breakdowns (device, location) without a rebuild.
+already has room for future breakdowns (device, location) without a rebuild.
 
 ---
 
