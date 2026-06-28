@@ -108,7 +108,29 @@
 	}
 
 	var qrCode = new QRCodeStyling( buildOptions( false ) );
+
+	// qr-code-styling's SVG has fixed width/height but no viewBox, so CSS
+	// scaling clips the bottom/right. Add a viewBox and let it scale to fit.
+	function fixSvgScaling() {
+		var svg = els.canvas.querySelector( 'svg' );
+		if ( ! svg ) { return; }
+		if ( ! svg.getAttribute( 'viewBox' ) ) {
+			var w = parseInt( svg.getAttribute( 'width' ), 10 );
+			var h = parseInt( svg.getAttribute( 'height' ), 10 );
+			if ( w && h ) {
+				svg.setAttribute( 'viewBox', '0 0 ' + w + ' ' + h );
+			}
+		}
+		svg.setAttribute( 'width', '100%' );
+		svg.removeAttribute( 'height' );
+		svg.style.display = 'block';
+		svg.style.height = 'auto';
+	}
+
+	// Re-apply whenever the engine replaces the SVG (every update()).
+	new MutationObserver( fixSvgScaling ).observe( els.canvas, { childList: true } );
 	qrCode.append( els.canvas );
+	requestAnimationFrame( fixSvgScaling );
 
 	function render() {
 		qrCode.update( buildOptions( false ) );

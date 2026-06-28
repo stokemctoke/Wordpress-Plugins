@@ -5,7 +5,7 @@ clone of sites like QRCode Monkey, with optional scan tracking (the part the pai
 sites charge for).
 
 **Brand:** Gallus QR · **Runs on:** stokemctoke.com (self-hosted WordPress) ·
-**Status:** v0.5.0 — generator ✅ · scan tracking ✅ (verified live) · export-size ✅ ·
+**Status:** v0.5.1 — generator ✅ · scan tracking ✅ (verified live) · export-size ✅ ·
 code library (rename / edit destination / delete / **faithful re-download**) ✅ ·
 analytics (unique + device + date-range) ✅ · Patreon layer (v2) next.
 
@@ -149,6 +149,8 @@ already has room for v2 breakdowns (device, location) without a rebuild.
 - **v0.5.0 ✅:** persist each code's design (shapes/colours/size/logo) so re-downloads
   match the original; in-place schema upgrade (no reactivation); preview decoupled from
   export size; smaller pure-white menu icon.
+- **v0.5.1 ✅:** fix preview clipping (inject an SVG `viewBox` so it scales without
+  cutting off the bottom/right); menu icon to 20 px.
 - **v2 — Patreon layer:** open the generator to logged-in/members, per-user code
   lists, richer analytics (device/location), a store-wide 10% discount hook for
   gallusgadgets.com, optional logo saving to the Media Library, more code types

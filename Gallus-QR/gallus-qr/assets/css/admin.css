@@ -81,18 +81,20 @@
 	gap: 1rem;
 }
 
-/* Keep the preview a fixed display size regardless of the chosen export
-   resolution — the QR is rendered at full size for download, shrunk here. */
+/* The preview SVG gets a viewBox added in JS, so it scales to the box width
+   without clipping. The box itself is a fixed size; export size is separate. */
 .gqr-canvas svg,
 .gqr-canvas canvas {
 	display: block;
 	width: 100%;
 	height: auto;
-	max-width: 288px;
 }
 
 .gqr-canvas {
 	display: inline-block;
+	width: 320px;
+	max-width: 100%;
+	box-sizing: border-box;
 	padding: 1rem;
 	background:
 		linear-gradient(45deg, #f0f0f1 25%, transparent 25%),

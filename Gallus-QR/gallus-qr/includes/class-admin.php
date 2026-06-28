@@ -143,9 +143,9 @@ class Gallus_QR_Admin {
 		?>
 		<style>
 			#adminmenu #toplevel_page_gallus-qr .wp-menu-image img {
-				width: 14px;
+				width: 20px;
 				height: auto;
-				padding-top: 10px;
+				padding-top: 7px;
 				opacity: 1;
 			}
 		</style>
