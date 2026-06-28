@@ -186,6 +186,34 @@ with the plugin — no CDN, works offline.
 
 ---
 
+## Local development & testing
+
+No PHP install needed — everything runs through Docker.
+
+**Lint** (fast, run on every change):
+
+```bash
+docker run --rm -v "$PWD/gallus-qr":/app -w /app php:8.3-cli \
+  sh -c 'for f in $(find . -name "*.php"); do php -l "$f"; done'
+```
+
+**Full WordPress** via [`wp-env`](https://developer.wordpress.org/block-editor/reference-guides/packages/packages-env/)
+(config in `.wp-env.json`, plugin auto-mounted + activated):
+
+```bash
+cd Gallus-QR
+npx --yes @wordpress/env start      # http://localhost:8888  (admin: admin / password)
+npx --yes @wordpress/env run cli wp rewrite structure '/%postname%/'   # pretty permalinks
+npx --yes @wordpress/env stop       # when done
+```
+
+Smoke test (verified): activate → tables created → insert a trackable code →
+`curl` the `/qr/{slug}/` short link → `302` to the destination → scan row logged
+with unique/device counts; unknown slug → `404`. Note `/qr/{slug}` (no trailing
+slash) does a harmless `301 → /qr/{slug}/` canonical hop first.
+
+---
+
 ## Reference — leading QR sites studied
 
 - **QRCode Monkey** — closest free analogue; logo + shapes + colours, PNG/SVG/PDF/EPS,
