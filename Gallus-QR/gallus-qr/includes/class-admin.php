@@ -1,7 +1,8 @@
 <?php
 /**
- * Admin side of Gallus QR: the menu, the generator screen, the scan-stats
- * dashboard, and asset loading.
+ * Admin side of Gallus QR: the menu, the generator screen, and asset loading.
+ * The Scan Stats screen lives in Gallus_QR_Admin_Stats; this class registers
+ * its menu entry (it owns the parent menu) and loads its assets.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -13,14 +14,23 @@ class Gallus_QR_Admin {
 	/** @var Gallus_QR_Database */
 	private $db;
 
+	/** @var Gallus_QR_Admin_Stats */
+	private $stats;
+
+	/** @var Gallus_QR_Settings */
+	private $settings;
+
+	/** @var Gallus_QR_Admin_Tools */
+	private $tools;
+
 	/** Hook suffix for the generator page (assets load only here). @var string */
 	private $page_hook = '';
 
-	/** Hook suffix for the Scan Stats page. @var string */
-	private $stats_hook = '';
-
-	public function __construct( Gallus_QR_Database $db ) {
-		$this->db = $db;
+	public function __construct( Gallus_QR_Database $db, Gallus_QR_Admin_Stats $stats, Gallus_QR_Settings $settings, Gallus_QR_Admin_Tools $tools ) {
+		$this->db       = $db;
+		$this->stats    = $stats;
+		$this->settings = $settings;
+		$this->tools    = $tools;
 	}
 
 	/**
@@ -30,86 +40,18 @@ class Gallus_QR_Admin {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_head', array( $this, 'menu_icon_css' ) );
-
-		// Rename / edit / delete handlers for the Scan Stats screen (admin-post.php).
-		add_action( 'admin_post_gallus_qr_rename', array( $this, 'handle_rename' ) );
-		add_action( 'admin_post_gallus_qr_destination', array( $this, 'handle_destination' ) );
-		add_action( 'admin_post_gallus_qr_delete', array( $this, 'handle_delete' ) );
-	}
-
-	/**
-	 * Handle a destination-change POST, then redirect back. The slug is
-	 * unchanged so the printed QR keeps working and now points somewhere new.
-	 */
-	public function handle_destination() {
-		$id = isset( $_POST['code_id'] ) ? absint( $_POST['code_id'] ) : 0;
-
-		if ( ! current_user_can( 'manage_options' )
-			|| ! check_admin_referer( 'gallus_qr_destination_' . $id ) ) {
-			wp_die( esc_html__( 'Permission denied.', 'gallus-qr' ) );
-		}
-
-		$destination = isset( $_POST['destination'] ) ? esc_url_raw( wp_unslash( $_POST['destination'] ) ) : '';
-
-		if ( empty( $destination ) || ! wp_http_validate_url( $destination ) ) {
-			wp_safe_redirect( add_query_arg( 'gqr_msg', 'badurl', $this->stats_url() ) );
-			exit;
-		}
-
-		$this->db->update_code_destination( $id, $destination );
-
-		wp_safe_redirect( add_query_arg( 'gqr_msg', 'retargeted', $this->stats_url() ) );
-		exit;
-	}
-
-	/**
-	 * Handle a rename POST from the Scan Stats screen, then redirect back.
-	 */
-	public function handle_rename() {
-		$id = isset( $_POST['code_id'] ) ? absint( $_POST['code_id'] ) : 0;
-
-		if ( ! current_user_can( 'manage_options' )
-			|| ! check_admin_referer( 'gallus_qr_rename_' . $id ) ) {
-			wp_die( esc_html__( 'Permission denied.', 'gallus-qr' ) );
-		}
-
-		$title = isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '';
-		$this->db->update_code_title( $id, $title );
-
-		wp_safe_redirect( add_query_arg( 'gqr_msg', 'renamed', $this->stats_url() ) );
-		exit;
-	}
-
-	/**
-	 * Handle a delete POST from the Scan Stats screen, then redirect back.
-	 */
-	public function handle_delete() {
-		$id = isset( $_POST['code_id'] ) ? absint( $_POST['code_id'] ) : 0;
-
-		if ( ! current_user_can( 'manage_options' )
-			|| ! check_admin_referer( 'gallus_qr_delete_' . $id ) ) {
-			wp_die( esc_html__( 'Permission denied.', 'gallus-qr' ) );
-		}
-
-		$this->db->delete_code( $id );
-
-		wp_safe_redirect( add_query_arg( 'gqr_msg', 'deleted', $this->stats_url() ) );
-		exit;
-	}
-
-	/** @return string URL of the Scan Stats admin page. */
-	private function stats_url() {
-		return admin_url( 'admin.php?page=gallus-qr-stats' );
 	}
 
 	/**
 	 * Add "Gallus QR" (generator) plus a "Scan Stats" submenu.
 	 */
 	public function register_menu() {
+		$cap = Gallus_QR_Settings::capability();
+
 		$this->page_hook = add_menu_page(
 			__( 'Gallus QR', 'gallus-qr' ),
 			__( 'Gallus QR', 'gallus-qr' ),
-			'manage_options',
+			$cap,
 			'gallus-qr',
 			array( $this, 'render_generator_page' ),
 			GALLUS_QR_URL . 'assets/img/menu-icon.png', // white "GG" mark; WP dims it to ~60% in the sidebar
@@ -120,18 +62,38 @@ class Gallus_QR_Admin {
 			'gallus-qr',
 			__( 'Generator', 'gallus-qr' ),
 			__( 'Generator', 'gallus-qr' ),
-			'manage_options',
+			$cap,
 			'gallus-qr',
 			array( $this, 'render_generator_page' )
 		);
 
-		$this->stats_hook = add_submenu_page(
+		$stats_hook = add_submenu_page(
 			'gallus-qr',
 			__( 'Scan Stats', 'gallus-qr' ),
 			__( 'Scan Stats', 'gallus-qr' ),
-			'manage_options',
+			$cap,
 			'gallus-qr-stats',
-			array( $this, 'render_stats_page' )
+			array( $this->stats, 'render_page' )
+		);
+		$this->stats->set_hook( $stats_hook );
+
+		add_submenu_page(
+			'gallus-qr',
+			__( 'Bulk import', 'gallus-qr' ),
+			__( 'Bulk import', 'gallus-qr' ),
+			$cap,
+			'gallus-qr-import',
+			array( $this->tools, 'render_import_page' )
+		);
+
+		// Settings stay admin-only — capability mapping is a security decision.
+		add_submenu_page(
+			'gallus-qr',
+			__( 'Settings', 'gallus-qr' ),
+			__( 'Settings', 'gallus-qr' ),
+			'manage_options',
+			'gallus-qr-settings',
+			array( $this->settings, 'render_page' )
 		);
 	}
 
@@ -153,13 +115,15 @@ class Gallus_QR_Admin {
 	}
 
 	/**
-	 * Load the engine, generator script and styles — but only on our page.
+	 * Load the engine, shared designer, page scripts and styles — but only on
+	 * our pages.
 	 *
 	 * @param string $hook The current admin page's hook suffix.
 	 */
 	public function enqueue_assets( $hook ) {
-		// The engine is needed on both screens (generator + stats re-download).
-		if ( $hook !== $this->page_hook && $hook !== $this->stats_hook ) {
+		$stats_hook = $this->stats->hook();
+
+		if ( $hook !== $this->page_hook && $hook !== $stats_hook ) {
 			return;
 		}
 
@@ -171,6 +135,15 @@ class Gallus_QR_Admin {
 			true
 		);
 
+		// Shared renderer — both screens (and the front-end block) draw through it.
+		wp_enqueue_script(
+			'gallus-qr-designer',
+			GALLUS_QR_URL . 'assets/js/designer.js',
+			array( 'qr-code-styling' ),
+			GALLUS_QR_VERSION,
+			true
+		);
+
 		wp_enqueue_style(
 			'gallus-qr-admin',
 			GALLUS_QR_URL . 'assets/css/admin.css',
@@ -179,11 +152,11 @@ class Gallus_QR_Admin {
 		);
 
 		// Stats screen: just the re-download helper.
-		if ( $hook === $this->stats_hook ) {
+		if ( $hook === $stats_hook ) {
 			wp_enqueue_script(
 				'gallus-qr-stats',
 				GALLUS_QR_URL . 'assets/js/stats.js',
-				array( 'qr-code-styling' ),
+				array( 'gallus-qr-designer' ),
 				GALLUS_QR_VERSION,
 				true
 			);
@@ -198,15 +171,40 @@ class Gallus_QR_Admin {
 					}
 				}
 			}
-			wp_localize_script( 'gallus-qr-stats', 'GallusQRStats', array( 'designs' => $designs ) );
+			wp_localize_script(
+				'gallus-qr-stats',
+				'GallusQRStats',
+				array(
+					'designs'  => $designs,
+					'restBase' => esc_url_raw( rest_url( 'gallus-qr/v1/codes' ) ),
+					'nonce'    => wp_create_nonce( 'wp_rest' ),
+					'i18n'     => array(
+						'renamed'       => __( 'Code renamed.', 'gallus-qr' ),
+						'retargeted'    => __( 'Destination updated — the printed code now points to the new URL.', 'gallus-qr' ),
+						'deleteConfirm' => __( 'Delete this code and all its scan data? This cannot be undone.', 'gallus-qr' ),
+						'requestFailed' => __( 'Request failed.', 'gallus-qr' ),
+					),
+				)
+			);
 			return;
 		}
 
-		// Generator screen: the full generator UI.
+		// Generator screen: media picker (logo), payload builders + the full
+		// generator UI.
+		wp_enqueue_media();
+
+		wp_enqueue_script(
+			'gallus-qr-payloads',
+			GALLUS_QR_URL . 'assets/js/payloads.js',
+			array(),
+			GALLUS_QR_VERSION,
+			true
+		);
+
 		wp_enqueue_script(
 			'gallus-qr-generator',
 			GALLUS_QR_URL . 'assets/js/generator.js',
-			array( 'qr-code-styling' ),
+			array( 'gallus-qr-designer', 'gallus-qr-payloads' ),
 			GALLUS_QR_VERSION,
 			true
 		);
@@ -216,9 +214,40 @@ class Gallus_QR_Admin {
 			'gallus-qr-generator',
 			'GallusQR',
 			array(
-				'restUrl' => esc_url_raw( rest_url( 'gallus-qr/v1/codes' ) ),
-				'nonce'   => wp_create_nonce( 'wp_rest' ),
-				'qrBase'  => esc_url_raw( home_url( '/qr/' ) ),
+				'restUrl'      => esc_url_raw( rest_url( 'gallus-qr/v1/codes' ) ),
+				'slugCheckUrl' => esc_url_raw( rest_url( 'gallus-qr/v1/slug-check' ) ),
+				'presetsUrl'   => esc_url_raw( rest_url( 'gallus-qr/v1/presets' ) ),
+				'nonce'        => wp_create_nonce( 'wp_rest' ),
+				'qrBase'       => esc_url_raw( home_url( '/qr/' ) ),
+				'i18n'         => array(
+					'modeHelpTrack'    => __( 'Routes through your site so every scan is counted. Save it to generate the tracked link.', 'gallus-qr' ),
+					'modeHelpDirect'   => __( 'Encodes your URL directly. Works forever, but scans can’t be counted — best for permanent things like PCBs.', 'gallus-qr' ),
+					'saveTrack'        => __( 'Save & make trackable', 'gallus-qr' ),
+					'saveLibrary'      => __( 'Save to library', 'gallus-qr' ),
+					'saving'           => __( 'Saving…', 'gallus-qr' ),
+					'badgeDirect'      => __( '○ Direct — not tracked', 'gallus-qr' ),
+					'badgeLibrary'     => __( '● Saved to library — not tracked', 'gallus-qr' ),
+					'badgeTracked'     => __( '● Tracked · via', 'gallus-qr' ),
+					'badgePending'     => __( '○ Trackable — not saved yet', 'gallus-qr' ),
+					'encodes'          => __( 'Encodes →', 'gallus-qr' ),
+					'savePrompt'       => __( 'Save to generate your tracked link, then download.', 'gallus-qr' ),
+					'downloadHint'     => __( 'Save first — otherwise you’d download an untracked code.', 'gallus-qr' ),
+					'enterUrl'         => __( 'Enter a URL first.', 'gallus-qr' ),
+					'fillFields'       => __( 'Fill in the required fields first.', 'gallus-qr' ),
+					'restMissing'      => __( 'Saving is unavailable (REST config missing).', 'gallus-qr' ),
+					'saveFailed'       => __( 'Save failed.', 'gallus-qr' ),
+					'savedLibrary'     => __( 'Saved — find it under Scan Stats for re-downloads.', 'gallus-qr' ),
+					'logoMediaTitle'   => __( 'Choose a centre logo', 'gallus-qr' ),
+					'logoMediaButton'  => __( 'Use as logo', 'gallus-qr' ),
+					'logoFromMedia'    => __( 'Logo: media library', 'gallus-qr' ),
+					'logoFromUpload'   => __( 'Logo: uploaded file', 'gallus-qr' ),
+					'presetNeedsName'  => __( 'Give the preset a name first.', 'gallus-qr' ),
+					'presetSaved'      => __( 'Preset saved.', 'gallus-qr' ),
+					'presetDeleted'    => __( 'Preset deleted.', 'gallus-qr' ),
+					'presetSaveFailed' => __( 'Could not save the preset.', 'gallus-qr' ),
+					'destBSchedule'    => __( 'Destination after the switch', 'gallus-qr' ),
+					'destBAb'          => __( 'Second destination (B)', 'gallus-qr' ),
+				),
 			)
 		);
 	}
@@ -238,7 +267,21 @@ class Gallus_QR_Admin {
 			<div class="gqr-layout">
 				<!-- LEFT: controls -->
 				<div class="gqr-controls">
-					<div class="gqr-field">
+					<label class="gqr-field">
+						<span><?php esc_html_e( 'Content type', 'gallus-qr' ); ?></span>
+						<select id="gqr-payload-type">
+							<option value="url"><?php esc_html_e( 'Website (URL)', 'gallus-qr' ); ?></option>
+							<option value="wifi"><?php esc_html_e( 'WiFi network', 'gallus-qr' ); ?></option>
+							<option value="vcard"><?php esc_html_e( 'Contact (vCard)', 'gallus-qr' ); ?></option>
+							<option value="email"><?php esc_html_e( 'Email', 'gallus-qr' ); ?></option>
+							<option value="sms"><?php esc_html_e( 'SMS', 'gallus-qr' ); ?></option>
+							<option value="tel"><?php esc_html_e( 'Phone number', 'gallus-qr' ); ?></option>
+							<option value="event"><?php esc_html_e( 'Calendar event', 'gallus-qr' ); ?></option>
+							<option value="text"><?php esc_html_e( 'Plain text', 'gallus-qr' ); ?></option>
+						</select>
+					</label>
+
+					<div class="gqr-field" id="gqr-mode-wrap">
 						<span><?php esc_html_e( 'Code type', 'gallus-qr' ); ?></span>
 						<div class="gqr-mode" role="radiogroup" aria-label="<?php esc_attr_e( 'Code type', 'gallus-qr' ); ?>">
 							<button type="button" class="gqr-mode-btn is-active" id="gqr-mode-direct" data-mode="direct" role="radio" aria-checked="true">
@@ -251,10 +294,182 @@ class Gallus_QR_Admin {
 						<span class="gqr-help" id="gqr-mode-help"></span>
 					</div>
 
-					<label class="gqr-field">
-						<span><?php esc_html_e( 'Content (URL)', 'gallus-qr' ); ?></span>
-						<input type="url" id="gqr-data" placeholder="https://stokemctoke.com" value="https://stokemctoke.com">
-					</label>
+					<!-- URL -->
+					<div class="gqr-payload-panel" data-type="url">
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'Content (URL)', 'gallus-qr' ); ?></span>
+							<input type="url" id="gqr-data" placeholder="https://stokemctoke.com" value="https://stokemctoke.com">
+						</label>
+						<details class="gqr-utm">
+							<summary><?php esc_html_e( 'Campaign tracking (UTM)', 'gallus-qr' ); ?></summary>
+							<div class="gqr-row">
+								<label class="gqr-field">
+									<span><?php esc_html_e( 'Source', 'gallus-qr' ); ?></span>
+									<input type="text" data-utm="source" placeholder="<?php esc_attr_e( 'e.g. flyer', 'gallus-qr' ); ?>">
+								</label>
+								<label class="gqr-field">
+									<span><?php esc_html_e( 'Medium', 'gallus-qr' ); ?></span>
+									<input type="text" data-utm="medium" placeholder="<?php esc_attr_e( 'e.g. qr', 'gallus-qr' ); ?>">
+								</label>
+								<label class="gqr-field">
+									<span><?php esc_html_e( 'Campaign', 'gallus-qr' ); ?></span>
+									<input type="text" data-utm="campaign" placeholder="<?php esc_attr_e( 'e.g. summer-2026', 'gallus-qr' ); ?>">
+								</label>
+							</div>
+						</details>
+					</div>
+
+					<!-- WiFi -->
+					<div class="gqr-payload-panel" data-type="wifi" hidden>
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'Network name (SSID)', 'gallus-qr' ); ?></span>
+							<input type="text" data-field="ssid">
+						</label>
+						<div class="gqr-row">
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Password', 'gallus-qr' ); ?></span>
+								<input type="text" data-field="password">
+							</label>
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Security', 'gallus-qr' ); ?></span>
+								<select data-field="encryption">
+									<option value="WPA"><?php esc_html_e( 'WPA/WPA2/WPA3', 'gallus-qr' ); ?></option>
+									<option value="WEP"><?php esc_html_e( 'WEP', 'gallus-qr' ); ?></option>
+									<option value="nopass"><?php esc_html_e( 'None (open)', 'gallus-qr' ); ?></option>
+								</select>
+							</label>
+						</div>
+						<label class="gqr-field gqr-check">
+							<input type="checkbox" data-field="hidden">
+							<span><?php esc_html_e( 'Hidden network', 'gallus-qr' ); ?></span>
+						</label>
+					</div>
+
+					<!-- vCard -->
+					<div class="gqr-payload-panel" data-type="vcard" hidden>
+						<div class="gqr-row">
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'First name', 'gallus-qr' ); ?></span>
+								<input type="text" data-field="first">
+							</label>
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Last name', 'gallus-qr' ); ?></span>
+								<input type="text" data-field="last">
+							</label>
+						</div>
+						<div class="gqr-row">
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Organisation', 'gallus-qr' ); ?></span>
+								<input type="text" data-field="org">
+							</label>
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Job title', 'gallus-qr' ); ?></span>
+								<input type="text" data-field="job">
+							</label>
+						</div>
+						<div class="gqr-row">
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Phone', 'gallus-qr' ); ?></span>
+								<input type="tel" data-field="phone">
+							</label>
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Email', 'gallus-qr' ); ?></span>
+								<input type="email" data-field="email">
+							</label>
+						</div>
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'Website', 'gallus-qr' ); ?></span>
+							<input type="url" data-field="url">
+						</label>
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'Street address', 'gallus-qr' ); ?></span>
+							<input type="text" data-field="street">
+						</label>
+						<div class="gqr-row">
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'City', 'gallus-qr' ); ?></span>
+								<input type="text" data-field="city">
+							</label>
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Postcode', 'gallus-qr' ); ?></span>
+								<input type="text" data-field="zip">
+							</label>
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Country', 'gallus-qr' ); ?></span>
+								<input type="text" data-field="country">
+							</label>
+						</div>
+					</div>
+
+					<!-- Email -->
+					<div class="gqr-payload-panel" data-type="email" hidden>
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'To (email address)', 'gallus-qr' ); ?></span>
+							<input type="email" data-field="to">
+						</label>
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'Subject', 'gallus-qr' ); ?></span>
+							<input type="text" data-field="subject">
+						</label>
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'Body', 'gallus-qr' ); ?></span>
+							<textarea data-field="body" rows="3"></textarea>
+						</label>
+					</div>
+
+					<!-- SMS -->
+					<div class="gqr-payload-panel" data-type="sms" hidden>
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'Phone number', 'gallus-qr' ); ?></span>
+							<input type="tel" data-field="number">
+						</label>
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'Message', 'gallus-qr' ); ?></span>
+							<textarea data-field="message" rows="3"></textarea>
+						</label>
+					</div>
+
+					<!-- Phone -->
+					<div class="gqr-payload-panel" data-type="tel" hidden>
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'Phone number', 'gallus-qr' ); ?></span>
+							<input type="tel" data-field="number">
+						</label>
+					</div>
+
+					<!-- Calendar event -->
+					<div class="gqr-payload-panel" data-type="event" hidden>
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'Event title', 'gallus-qr' ); ?></span>
+							<input type="text" data-field="summary">
+						</label>
+						<div class="gqr-row">
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Starts', 'gallus-qr' ); ?></span>
+								<input type="datetime-local" data-field="start">
+							</label>
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Ends', 'gallus-qr' ); ?></span>
+								<input type="datetime-local" data-field="end">
+							</label>
+						</div>
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'Location', 'gallus-qr' ); ?></span>
+							<input type="text" data-field="location">
+						</label>
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'Description', 'gallus-qr' ); ?></span>
+							<textarea data-field="description" rows="3"></textarea>
+						</label>
+					</div>
+
+					<!-- Plain text -->
+					<div class="gqr-payload-panel" data-type="text" hidden>
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'Text', 'gallus-qr' ); ?></span>
+							<textarea data-field="text" rows="4"></textarea>
+						</label>
+					</div>
 
 					<div class="gqr-row">
 						<label class="gqr-field">
@@ -262,6 +477,10 @@ class Gallus_QR_Admin {
 							<select id="gqr-dot-style">
 								<option value="square"><?php esc_html_e( 'Square', 'gallus-qr' ); ?></option>
 								<option value="rounded"><?php esc_html_e( 'Rounded', 'gallus-qr' ); ?></option>
+								<option value="dots"><?php esc_html_e( 'Dots', 'gallus-qr' ); ?></option>
+								<option value="classy"><?php esc_html_e( 'Classy', 'gallus-qr' ); ?></option>
+								<option value="classy-rounded"><?php esc_html_e( 'Classy rounded', 'gallus-qr' ); ?></option>
+								<option value="extra-rounded"><?php esc_html_e( 'Extra rounded', 'gallus-qr' ); ?></option>
 							</select>
 						</label>
 
@@ -270,6 +489,16 @@ class Gallus_QR_Admin {
 							<select id="gqr-corner-style">
 								<option value="square"><?php esc_html_e( 'Square', 'gallus-qr' ); ?></option>
 								<option value="extra-rounded"><?php esc_html_e( 'Rounded', 'gallus-qr' ); ?></option>
+								<option value="dot"><?php esc_html_e( 'Dot', 'gallus-qr' ); ?></option>
+							</select>
+						</label>
+
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'Corner dot', 'gallus-qr' ); ?></span>
+							<select id="gqr-corner-dot">
+								<option value="auto"><?php esc_html_e( 'Auto', 'gallus-qr' ); ?></option>
+								<option value="square"><?php esc_html_e( 'Square', 'gallus-qr' ); ?></option>
+								<option value="dot"><?php esc_html_e( 'Dot', 'gallus-qr' ); ?></option>
 							</select>
 						</label>
 					</div>
@@ -292,13 +521,92 @@ class Gallus_QR_Admin {
 						</label>
 					</div>
 
-					<label class="gqr-field">
-						<span><?php esc_html_e( 'Centre logo (PNG)', 'gallus-qr' ); ?></span>
-						<input type="file" id="gqr-logo" accept="image/png,image/svg+xml">
-						<button type="button" id="gqr-logo-clear" class="button-link gqr-clear-link">
-							<?php esc_html_e( 'Remove logo', 'gallus-qr' ); ?>
-						</button>
+					<div class="gqr-row">
+						<label class="gqr-field">
+							<span><?php esc_html_e( 'Gradient', 'gallus-qr' ); ?></span>
+							<select id="gqr-gradient">
+								<option value="none"><?php esc_html_e( 'None (solid)', 'gallus-qr' ); ?></option>
+								<option value="linear"><?php esc_html_e( 'Linear', 'gallus-qr' ); ?></option>
+								<option value="radial"><?php esc_html_e( 'Radial', 'gallus-qr' ); ?></option>
+							</select>
+						</label>
+
+						<label class="gqr-field" id="gqr-fg2-field" hidden>
+							<span><?php esc_html_e( 'Second colour', 'gallus-qr' ); ?></span>
+							<input type="color" id="gqr-fg2" value="#2271b1">
+						</label>
+					</div>
+
+					<label class="gqr-field gqr-check">
+						<input type="checkbox" id="gqr-bg-transparent">
+						<span><?php esc_html_e( 'Transparent background', 'gallus-qr' ); ?></span>
 					</label>
+
+					<div class="gqr-field">
+						<span><?php esc_html_e( 'Centre logo', 'gallus-qr' ); ?></span>
+						<div class="gqr-row gqr-logo-row">
+							<button type="button" id="gqr-logo-media" class="button">
+								<?php esc_html_e( 'Media Library…', 'gallus-qr' ); ?>
+							</button>
+							<label class="button gqr-upload-label">
+								<?php esc_html_e( 'Upload…', 'gallus-qr' ); ?>
+								<input type="file" id="gqr-logo" accept="image/png,image/jpeg,image/svg+xml" hidden>
+							</label>
+							<button type="button" id="gqr-logo-clear" class="button-link gqr-clear-link">
+								<?php esc_html_e( 'Remove', 'gallus-qr' ); ?>
+							</button>
+						</div>
+						<span class="gqr-help" id="gqr-logo-status"></span>
+					</div>
+
+					<!-- Frame / call-to-action label -->
+					<div class="gqr-field">
+						<span><?php esc_html_e( 'Frame', 'gallus-qr' ); ?></span>
+						<div class="gqr-row">
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Style', 'gallus-qr' ); ?></span>
+								<select id="gqr-frame-style">
+									<option value="none"><?php esc_html_e( 'None', 'gallus-qr' ); ?></option>
+									<option value="label-bottom"><?php esc_html_e( 'Label below', 'gallus-qr' ); ?></option>
+									<option value="label-top"><?php esc_html_e( 'Label above', 'gallus-qr' ); ?></option>
+								</select>
+							</label>
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Text', 'gallus-qr' ); ?></span>
+								<input type="text" id="gqr-frame-text" value="SCAN ME" maxlength="40">
+							</label>
+						</div>
+						<div class="gqr-row" id="gqr-frame-colors" hidden>
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Band colour', 'gallus-qr' ); ?></span>
+								<input type="color" id="gqr-frame-band" value="#000000">
+							</label>
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Text colour', 'gallus-qr' ); ?></span>
+								<input type="color" id="gqr-frame-textcolor" value="#ffffff">
+							</label>
+						</div>
+					</div>
+
+					<!-- Design presets -->
+					<div class="gqr-field">
+						<span><?php esc_html_e( 'Presets', 'gallus-qr' ); ?></span>
+						<div class="gqr-row">
+							<select id="gqr-preset-select">
+								<option value=""><?php esc_html_e( '— Apply a preset —', 'gallus-qr' ); ?></option>
+							</select>
+							<button type="button" id="gqr-preset-delete" class="button-link gqr-clear-link" hidden>
+								<?php esc_html_e( 'Delete', 'gallus-qr' ); ?>
+							</button>
+						</div>
+						<div class="gqr-row">
+							<input type="text" id="gqr-preset-name" placeholder="<?php esc_attr_e( 'Preset name', 'gallus-qr' ); ?>">
+							<button type="button" id="gqr-preset-save" class="button">
+								<?php esc_html_e( 'Save preset', 'gallus-qr' ); ?>
+							</button>
+						</div>
+						<span class="gqr-help" id="gqr-preset-status"></span>
+					</div>
 
 					<label class="gqr-field">
 						<span>
@@ -315,6 +623,61 @@ class Gallus_QR_Admin {
 							<span><?php esc_html_e( 'Label (for your stats)', 'gallus-qr' ); ?></span>
 							<input type="text" id="gqr-title" placeholder="<?php esc_attr_e( 'e.g. Business card', 'gallus-qr' ); ?>">
 						</label>
+						<label class="gqr-field" id="gqr-slug-field">
+							<span><?php esc_html_e( 'Custom link (optional)', 'gallus-qr' ); ?></span>
+							<span class="gqr-slug-row">
+								<code>/qr/</code>
+								<input type="text" id="gqr-slug" placeholder="<?php esc_attr_e( 'e.g. summer-sale', 'gallus-qr' ); ?>" maxlength="64" autocomplete="off" spellcheck="false">
+							</span>
+							<span class="gqr-help" id="gqr-slug-status"></span>
+						</label>
+						<details class="gqr-advanced" id="gqr-advanced">
+							<summary><?php esc_html_e( 'Advanced options', 'gallus-qr' ); ?></summary>
+
+							<div class="gqr-row">
+								<label class="gqr-field">
+									<span><?php esc_html_e( 'Expires', 'gallus-qr' ); ?></span>
+									<input type="datetime-local" id="gqr-expires">
+								</label>
+								<label class="gqr-field">
+									<span><?php esc_html_e( 'Scan limit', 'gallus-qr' ); ?></span>
+									<input type="number" id="gqr-max-scans" min="0" step="1" placeholder="<?php esc_attr_e( '0 = unlimited', 'gallus-qr' ); ?>">
+								</label>
+							</div>
+
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Fallback URL (expired/paused/limit reached)', 'gallus-qr' ); ?></span>
+								<input type="url" id="gqr-fallback" placeholder="<?php esc_attr_e( 'Leave empty for a plain “no longer active” page', 'gallus-qr' ); ?>">
+							</label>
+
+							<label class="gqr-field">
+								<span><?php esc_html_e( 'Destination mode', 'gallus-qr' ); ?></span>
+								<select id="gqr-dest-mode">
+									<option value="single"><?php esc_html_e( 'Single destination', 'gallus-qr' ); ?></option>
+									<option value="schedule"><?php esc_html_e( 'Switch on a date', 'gallus-qr' ); ?></option>
+									<option value="ab"><?php esc_html_e( 'A/B rotation', 'gallus-qr' ); ?></option>
+								</select>
+							</label>
+
+							<div id="gqr-dest-extra" hidden>
+								<label class="gqr-field">
+									<span id="gqr-dest-b-label"><?php esc_html_e( 'Second destination (B)', 'gallus-qr' ); ?></span>
+									<input type="url" id="gqr-dest-b">
+								</label>
+								<label class="gqr-field" id="gqr-switch-field" hidden>
+									<span><?php esc_html_e( 'Switch over at', 'gallus-qr' ); ?></span>
+									<input type="datetime-local" id="gqr-switch-at">
+								</label>
+								<label class="gqr-field" id="gqr-split-field" hidden>
+									<span>
+										<?php esc_html_e( 'Traffic to B (%)', 'gallus-qr' ); ?>
+										<output id="gqr-split-value">50</output>
+									</span>
+									<input type="range" id="gqr-ab-split" min="0" max="100" step="5" value="50">
+								</label>
+							</div>
+						</details>
+
 						<button type="button" id="gqr-save" class="button button-secondary">
 							<?php esc_html_e( 'Save &amp; make trackable', 'gallus-qr' ); ?>
 						</button>
@@ -329,10 +692,13 @@ class Gallus_QR_Admin {
 					<p id="gqr-encodes" class="gqr-encodes"></p>
 					<div class="gqr-downloads">
 						<button type="button" id="gqr-download-png" class="button button-primary">
-							<?php esc_html_e( 'Download PNG', 'gallus-qr' ); ?>
+							<?php esc_html_e( 'PNG', 'gallus-qr' ); ?>
+						</button>
+						<button type="button" id="gqr-download-jpeg" class="button button-primary">
+							<?php esc_html_e( 'JPEG', 'gallus-qr' ); ?>
 						</button>
 						<button type="button" id="gqr-download-svg" class="button button-primary">
-							<?php esc_html_e( 'Download SVG', 'gallus-qr' ); ?>
+							<?php esc_html_e( 'SVG', 'gallus-qr' ); ?>
 						</button>
 					</div>
 					<p id="gqr-download-hint" class="gqr-help gqr-download-hint" hidden></p>
@@ -340,195 +706,5 @@ class Gallus_QR_Admin {
 			</div>
 		</div>
 		<?php
-	}
-
-	/** Allowed date ranges for the dashboard: query value => [label, days]. */
-	private function ranges() {
-		return array(
-			'7'   => array( __( 'Last 7 days', 'gallus-qr' ), 7 ),
-			'30'  => array( __( 'Last 30 days', 'gallus-qr' ), 30 ),
-			'90'  => array( __( 'Last 90 days', 'gallus-qr' ), 90 ),
-			'all' => array( __( 'All time', 'gallus-qr' ), 3650 ),
-		);
-	}
-
-	/**
-	 * The scan-stats dashboard: a date-range selector plus, per code, its
-	 * editable label/destination, totals (total + unique), device split, a
-	 * bar chart, and re-download/delete actions. Charts are server-rendered.
-	 */
-	public function render_stats_page() {
-		$codes   = $this->db->get_codes_with_counts();
-		$action  = esc_url( admin_url( 'admin-post.php' ) );
-		$ranges  = $this->ranges();
-
-		// Selected range (default 30 days).
-		$range_key = isset( $_GET['gqr_range'] ) ? sanitize_key( $_GET['gqr_range'] ) : '30';
-		if ( ! isset( $ranges[ $range_key ] ) ) {
-			$range_key = '30';
-		}
-		$days  = $ranges[ $range_key ][1];
-		$since = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days} days", current_time( 'timestamp' ) ) );
-		?>
-		<div class="wrap gqr-wrap">
-			<h1><?php esc_html_e( 'Gallus QR — Scan Stats', 'gallus-qr' ); ?></h1>
-
-			<?php $this->maybe_render_notice(); ?>
-
-			<?php if ( empty( $codes ) ) : ?>
-				<p>
-					<?php esc_html_e( 'No trackable codes yet. Create one on the Generator screen with “Trackable” ticked.', 'gallus-qr' ); ?>
-				</p>
-			<?php else : ?>
-				<form method="get" class="gqr-range-form">
-					<input type="hidden" name="page" value="gallus-qr-stats">
-					<label>
-						<?php esc_html_e( 'Date range:', 'gallus-qr' ); ?>
-						<select name="gqr_range" onchange="this.form.submit()">
-							<?php foreach ( $ranges as $key => $info ) : ?>
-								<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $key, $range_key ); ?>>
-									<?php echo esc_html( $info[0] ); ?>
-								</option>
-							<?php endforeach; ?>
-						</select>
-					</label>
-				</form>
-
-				<table class="widefat gqr-stats-table">
-					<thead>
-						<tr>
-							<th><?php esc_html_e( 'Label', 'gallus-qr' ); ?></th>
-							<th><?php esc_html_e( 'Short link', 'gallus-qr' ); ?></th>
-							<th><?php esc_html_e( 'Destination', 'gallus-qr' ); ?></th>
-							<th><?php esc_html_e( 'Scans (range)', 'gallus-qr' ); ?></th>
-							<th><?php esc_html_e( 'Devices', 'gallus-qr' ); ?></th>
-							<th><?php echo esc_html( $ranges[ $range_key ][0] ); ?></th>
-							<th><?php esc_html_e( 'Actions', 'gallus-qr' ); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php
-						foreach ( $codes as $code ) :
-							$short   = home_url( '/qr/' . $code->slug );
-							$summary = $this->db->get_range_summary( (int) $code->id, $since );
-							$devices = $this->db->get_device_breakdown( (int) $code->id, $since );
-							?>
-							<tr>
-								<td>
-									<form method="post" action="<?php echo $action; ?>" class="gqr-inline">
-										<input type="hidden" name="action" value="gallus_qr_rename">
-										<input type="hidden" name="code_id" value="<?php echo (int) $code->id; ?>">
-										<?php wp_nonce_field( 'gallus_qr_rename_' . (int) $code->id ); ?>
-										<input type="text" name="title" value="<?php echo esc_attr( $code->title ); ?>" placeholder="<?php esc_attr_e( 'Label', 'gallus-qr' ); ?>">
-										<button type="submit" class="button button-small"><?php esc_html_e( 'Save', 'gallus-qr' ); ?></button>
-									</form>
-								</td>
-								<td>
-									<a href="<?php echo esc_url( $short ); ?>" target="_blank" rel="noopener">
-										/qr/<?php echo esc_html( $code->slug ); ?>
-									</a>
-								</td>
-								<td>
-									<form method="post" action="<?php echo $action; ?>" class="gqr-inline">
-										<input type="hidden" name="action" value="gallus_qr_destination">
-										<input type="hidden" name="code_id" value="<?php echo (int) $code->id; ?>">
-										<?php wp_nonce_field( 'gallus_qr_destination_' . (int) $code->id ); ?>
-										<input type="url" name="destination" value="<?php echo esc_attr( $code->destination ); ?>" class="gqr-dest-input">
-										<button type="submit" class="button button-small"><?php esc_html_e( 'Update', 'gallus-qr' ); ?></button>
-									</form>
-								</td>
-								<td class="gqr-total">
-									<?php echo (int) $summary['total']; ?>
-									<span class="gqr-sub"><?php
-										/* translators: %d: number of unique visitors. */
-										printf( esc_html__( '%d unique', 'gallus-qr' ), (int) $summary['unique'] );
-									?></span>
-								</td>
-								<td class="gqr-devices">
-									<?php
-									$parts = array();
-									foreach ( $devices as $name => $count ) {
-										if ( $count > 0 ) {
-											$parts[] = esc_html( $name . ': ' . $count );
-										}
-									}
-									echo $parts ? implode( '<br>', $parts ) : '—'; // phpcs:ignore WordPress.Security.EscapeOutput
-									?>
-								</td>
-								<td><?php $this->render_sparkline( (int) $code->id, (int) min( $days, 90 ) ); ?></td>
-								<td class="gqr-actions">
-									<button type="button" class="button button-small gqr-dl" data-url="<?php echo esc_url( $short ); ?>" data-slug="<?php echo esc_attr( $code->slug ); ?>" data-ext="png">PNG</button>
-									<button type="button" class="button button-small gqr-dl" data-url="<?php echo esc_url( $short ); ?>" data-slug="<?php echo esc_attr( $code->slug ); ?>" data-ext="svg">SVG</button>
-									<form method="post" action="<?php echo $action; ?>" onsubmit="return confirm('<?php echo esc_js( __( 'Delete this code and all its scan data? This cannot be undone.', 'gallus-qr' ) ); ?>');">
-										<input type="hidden" name="action" value="gallus_qr_delete">
-										<input type="hidden" name="code_id" value="<?php echo (int) $code->id; ?>">
-										<?php wp_nonce_field( 'gallus_qr_delete_' . (int) $code->id ); ?>
-										<button type="submit" class="button-link gqr-delete"><?php esc_html_e( 'Delete', 'gallus-qr' ); ?></button>
-									</form>
-								</td>
-							</tr>
-						<?php endforeach; ?>
-					</tbody>
-				</table>
-				<p class="gqr-help">
-					<?php esc_html_e( 'Re-download (PNG/SVG) regenerates the code from its short link using the design you saved it with. Codes saved before v0.5.0 come out plain black-on-white.', 'gallus-qr' ); ?>
-				</p>
-			<?php endif; ?>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Show a success/error notice after a redirect from an admin-post action.
-	 */
-	private function maybe_render_notice() {
-		$msg = isset( $_GET['gqr_msg'] ) ? sanitize_key( $_GET['gqr_msg'] ) : '';
-
-		$success = array(
-			'renamed'    => __( 'Code renamed.', 'gallus-qr' ),
-			'deleted'    => __( 'Code deleted.', 'gallus-qr' ),
-			'retargeted' => __( 'Destination updated — the printed code now points to the new URL.', 'gallus-qr' ),
-		);
-
-		if ( isset( $success[ $msg ] ) ) {
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $success[ $msg ] ) . '</p></div>';
-		} elseif ( 'badurl' === $msg ) {
-			echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'That destination was not a valid URL.', 'gallus-qr' ) . '</p></div>';
-		}
-	}
-
-	/**
-	 * Render a per-day bar chart (up to 90 days) for one code as CSS bars.
-	 *
-	 * @param int $code_id
-	 * @param int $days
-	 */
-	private function render_sparkline( $code_id, $days = 30 ) {
-		$daily = $this->db->get_daily_scans( $code_id, $days );
-
-		// Build an ordered list of the last N days, filling gaps with 0.
-		$counts = array();
-		for ( $i = $days - 1; $i >= 0; $i-- ) {
-			$day            = gmdate( 'Y-m-d', strtotime( "-{$i} days", current_time( 'timestamp' ) ) );
-			$counts[ $day ] = isset( $daily[ $day ] ) ? $daily[ $day ] : 0;
-		}
-
-		$max   = max( 1, max( $counts ) );
-		$label = sprintf(
-			/* translators: %d: number of days. */
-			esc_attr__( 'Scans per day, last %d days', 'gallus-qr' ),
-			$days
-		);
-		echo '<div class="gqr-spark" role="img" aria-label="' . esc_attr( $label ) . '">';
-		foreach ( $counts as $day => $hits ) {
-			$pct   = (int) round( ( $hits / $max ) * 100 );
-			$title = sprintf( '%s: %d', $day, $hits );
-			printf(
-				'<span class="gqr-spark-bar" style="height:%d%%" title="%s"></span>',
-				max( 4, $pct ), // floor so empty days are still visible
-				esc_attr( $title )
-			);
-		}
-		echo '</div>';
 	}
 }

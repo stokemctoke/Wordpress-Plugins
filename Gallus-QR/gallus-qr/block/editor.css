@@ -1,0 +1,11 @@
+/* Gallus QR Code block — editor preview. */
+
+.gallus-qr-block-preview {
+	width: 100%;
+}
+
+.gallus-qr-block-preview svg {
+	display: block;
+	width: 100%;
+	height: auto;
+}

@@ -1,0 +1,13 @@
+/* Gallus QR — front-end embed (block + shortcode). */
+
+.gallus-qr-embed {
+	width: 100%;
+	margin: 0 auto;
+}
+
+.gallus-qr-embed svg,
+.gallus-qr-embed canvas {
+	display: block;
+	width: 100%;
+	height: auto;
+}

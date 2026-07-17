@@ -1,0 +1,30 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "gallus-qr/code",
+	"version": "2.0.0",
+	"title": "Gallus QR Code",
+	"category": "widgets",
+	"icon": "grid-view",
+	"description": "Display one of your saved Gallus QR codes.",
+	"keywords": [ "qr", "qr code", "gallus" ],
+	"textdomain": "gallus-qr",
+	"attributes": {
+		"codeId": {
+			"type": "number",
+			"default": 0
+		},
+		"size": {
+			"type": "number",
+			"default": 256
+		}
+	},
+	"supports": {
+		"html": false,
+		"align": true
+	},
+	"editorScript": "gallus-qr-block-editor",
+	"editorStyle": "gallus-qr-block-editor",
+	"viewScript": [ "gallus-qr-frontend" ],
+	"style": "gallus-qr-frontend"
+}

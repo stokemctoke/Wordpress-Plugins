@@ -1,0 +1,1088 @@
+# Copyright (C) 2026 Gallus Gadgets
+# This file is distributed under the GPL-2.0-or-later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Gallus QR 2.0.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/app\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-07-17T02:38:38+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: gallus-qr\n"
+
+#. Plugin Name of the plugin
+#: gallus-qr.php
+#: includes/class-admin.php:52
+#: includes/class-admin.php:53
+#: includes/class-admin.php:262
+msgid "Gallus QR"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: gallus-qr.php
+msgid "https://stokemctoke.com"
+msgstr ""
+
+#. Description of the plugin
+#: gallus-qr.php
+msgid "Free, self-hosted custom QR code generator — centre logo, custom shapes, adjustable export size, PNG/SVG export, editable dynamic codes, scan analytics, and faithful re-download of saved designs."
+msgstr ""
+
+#. Author of the plugin
+#: gallus-qr.php
+msgid "Gallus Gadgets"
+msgstr ""
+
+#. Author URI of the plugin
+#: gallus-qr.php
+msgid "https://gallusgadgets.com"
+msgstr ""
+
+#: includes/class-admin-stats.php:40
+msgid "Last 7 days"
+msgstr ""
+
+#: includes/class-admin-stats.php:41
+msgid "Last 30 days"
+msgstr ""
+
+#: includes/class-admin-stats.php:42
+msgid "Last 90 days"
+msgstr ""
+
+#: includes/class-admin-stats.php:43
+msgid "All time"
+msgstr ""
+
+#: includes/class-admin-stats.php:58
+msgid "Paused"
+msgstr ""
+
+#: includes/class-admin-stats.php:64
+msgid "Expired"
+msgstr ""
+
+#: includes/class-admin-stats.php:71
+msgid "Limit reached"
+msgstr ""
+
+#: includes/class-admin-stats.php:76
+msgid "Active"
+msgstr ""
+
+#: includes/class-admin-stats.php:102
+msgid "Gallus QR — Scan Stats"
+msgstr ""
+
+#: includes/class-admin-stats.php:108
+msgid "No saved codes yet. Create one on the Generator screen."
+msgstr ""
+
+#: includes/class-admin-stats.php:114
+msgid "Date range:"
+msgstr ""
+
+#: includes/class-admin-stats.php:130
+#: includes/class-admin-stats.php:159
+msgid "Label"
+msgstr ""
+
+#: includes/class-admin-stats.php:131
+msgid "Short link"
+msgstr ""
+
+#: includes/class-admin-stats.php:132
+msgid "Destination"
+msgstr ""
+
+#: includes/class-admin-stats.php:133
+msgid "Status"
+msgstr ""
+
+#: includes/class-admin-stats.php:134
+msgid "Scans (range)"
+msgstr ""
+
+#: includes/class-admin-stats.php:135
+msgid "Devices"
+msgstr ""
+
+#: includes/class-admin-stats.php:137
+msgid "Actions"
+msgstr ""
+
+#: includes/class-admin-stats.php:160
+msgid "Save"
+msgstr ""
+
+#: includes/class-admin-stats.php:176
+msgid "Update"
+msgstr ""
+
+#. translators: 1: URL, 2: site-local date/time.
+#: includes/class-admin-stats.php:184
+#, php-format
+msgid "→ %1$s after %2$s"
+msgstr ""
+
+#. translators: 1: URL, 2: percentage.
+#: includes/class-admin-stats.php:191
+#, php-format
+msgid "B: %1$s (%2$d%%)"
+msgstr ""
+
+#. translators: %s: site-local date/time.
+#: includes/class-admin-stats.php:215
+#, php-format
+msgid "until %s"
+msgstr ""
+
+#: includes/class-admin-stats.php:225
+msgid "Resume"
+msgstr ""
+
+#: includes/class-admin-stats.php:225
+msgid "Pause"
+msgstr ""
+
+#. translators: %d: number of unique visitors.
+#: includes/class-admin-stats.php:235
+#, php-format
+msgid "%d unique"
+msgstr ""
+
+#: includes/class-admin-stats.php:262
+#: includes/class-admin.php:599
+msgid "Delete"
+msgstr ""
+
+#: includes/class-admin-stats.php:269
+msgid "Re-download (PNG/SVG) regenerates the code using the design you saved it with. Codes saved before v0.5.0 come out plain black-on-white."
+msgstr ""
+
+#: includes/class-admin-stats.php:298
+msgid "Scans by hour of day"
+msgstr ""
+
+#: includes/class-admin-stats.php:299
+msgid "Scans per hour of day"
+msgstr ""
+
+#: includes/class-admin-stats.php:306
+msgid "00:00 → 23:00, site time"
+msgstr ""
+
+#: includes/class-admin-stats.php:310
+msgid "Top countries"
+msgstr ""
+
+#: includes/class-admin-stats.php:312
+msgid "No scans in this range."
+msgstr ""
+
+#: includes/class-admin-stats.php:317
+msgid "Unknown"
+msgstr ""
+
+#: includes/class-admin-stats.php:326
+msgid "Operating systems"
+msgstr ""
+
+#: includes/class-admin-stats.php:335
+msgid "Browsers"
+msgstr ""
+
+#. translators: %d: number of days.
+#: includes/class-admin-stats.php:366
+#, php-format
+msgid "Scans per day, last %d days"
+msgstr ""
+
+#: includes/class-admin-tools.php:39
+msgid "Gallus QR — Bulk import"
+msgstr ""
+
+#: includes/class-admin-tools.php:42
+msgid "Upload a CSV to create trackable URL codes in bulk. Columns:"
+msgstr ""
+
+#. translators: %d: maximum number of rows.
+#: includes/class-admin-tools.php:46
+#, php-format
+msgid "(max %d rows; a header row is skipped automatically)."
+msgstr ""
+
+#: includes/class-admin-tools.php:54
+msgid "Import"
+msgstr ""
+
+#. translators: 1: created count, 2: skipped count.
+#: includes/class-admin-tools.php:62
+#, php-format
+msgid "Import finished — %1$d created, %2$d skipped"
+msgstr ""
+
+#: includes/class-admin-tools.php:69
+msgid "Row"
+msgstr ""
+
+#: includes/class-admin-tools.php:70
+msgid "Result"
+msgstr ""
+
+#: includes/class-admin-tools.php:96
+#: includes/class-admin-tools.php:209
+#: includes/class-settings.php:83
+msgid "Permission denied."
+msgstr ""
+
+#. translators: %d: maximum number of rows.
+#: includes/class-admin-tools.php:126
+#, php-format
+msgid "Stopped — imports are capped at %d rows."
+msgstr ""
+
+#: includes/class-admin-tools.php:144
+msgid "Skipped — invalid destination URL."
+msgstr ""
+
+#: includes/class-admin-tools.php:155
+msgid "Skipped — slug invalid or already taken."
+msgstr ""
+
+#. translators: %s: the new short link path.
+#: includes/class-admin-tools.php:168
+#, php-format
+msgid "Created /qr/%s"
+msgstr ""
+
+#: includes/class-admin-tools.php:174
+msgid "Skipped — could not save."
+msgstr ""
+
+#: includes/class-admin-tools.php:214
+#: includes/class-rest.php:603
+msgid "No such QR code."
+msgstr ""
+
+#: includes/class-admin.php:63
+#: includes/class-admin.php:64
+msgid "Generator"
+msgstr ""
+
+#: includes/class-admin.php:72
+#: includes/class-admin.php:73
+msgid "Scan Stats"
+msgstr ""
+
+#: includes/class-admin.php:82
+#: includes/class-admin.php:83
+msgid "Bulk import"
+msgstr ""
+
+#: includes/class-admin.php:92
+#: includes/class-admin.php:93
+msgid "Settings"
+msgstr ""
+
+#: includes/class-admin.php:182
+msgid "Code renamed."
+msgstr ""
+
+#: includes/class-admin.php:183
+msgid "Destination updated — the printed code now points to the new URL."
+msgstr ""
+
+#: includes/class-admin.php:184
+msgid "Delete this code and all its scan data? This cannot be undone."
+msgstr ""
+
+#: includes/class-admin.php:185
+msgid "Request failed."
+msgstr ""
+
+#: includes/class-admin.php:223
+msgid "Routes through your site so every scan is counted. Save it to generate the tracked link."
+msgstr ""
+
+#: includes/class-admin.php:224
+msgid "Encodes your URL directly. Works forever, but scans can’t be counted — best for permanent things like PCBs."
+msgstr ""
+
+#: includes/class-admin.php:225
+msgid "Save & make trackable"
+msgstr ""
+
+#: includes/class-admin.php:226
+msgid "Save to library"
+msgstr ""
+
+#: includes/class-admin.php:227
+msgid "Saving…"
+msgstr ""
+
+#: includes/class-admin.php:228
+msgid "○ Direct — not tracked"
+msgstr ""
+
+#: includes/class-admin.php:229
+msgid "● Saved to library — not tracked"
+msgstr ""
+
+#: includes/class-admin.php:230
+msgid "● Tracked · via"
+msgstr ""
+
+#: includes/class-admin.php:231
+msgid "○ Trackable — not saved yet"
+msgstr ""
+
+#: includes/class-admin.php:232
+msgid "Encodes →"
+msgstr ""
+
+#: includes/class-admin.php:233
+msgid "Save to generate your tracked link, then download."
+msgstr ""
+
+#: includes/class-admin.php:234
+msgid "Save first — otherwise you’d download an untracked code."
+msgstr ""
+
+#: includes/class-admin.php:235
+msgid "Enter a URL first."
+msgstr ""
+
+#: includes/class-admin.php:236
+msgid "Fill in the required fields first."
+msgstr ""
+
+#: includes/class-admin.php:237
+msgid "Saving is unavailable (REST config missing)."
+msgstr ""
+
+#: includes/class-admin.php:238
+msgid "Save failed."
+msgstr ""
+
+#: includes/class-admin.php:239
+msgid "Saved — find it under Scan Stats for re-downloads."
+msgstr ""
+
+#: includes/class-admin.php:240
+msgid "Choose a centre logo"
+msgstr ""
+
+#: includes/class-admin.php:241
+msgid "Use as logo"
+msgstr ""
+
+#: includes/class-admin.php:242
+msgid "Logo: media library"
+msgstr ""
+
+#: includes/class-admin.php:243
+msgid "Logo: uploaded file"
+msgstr ""
+
+#: includes/class-admin.php:244
+msgid "Give the preset a name first."
+msgstr ""
+
+#: includes/class-admin.php:245
+msgid "Preset saved."
+msgstr ""
+
+#: includes/class-admin.php:246
+msgid "Preset deleted."
+msgstr ""
+
+#: includes/class-admin.php:247
+#: includes/class-rest.php:571
+msgid "Could not save the preset."
+msgstr ""
+
+#: includes/class-admin.php:248
+msgid "Destination after the switch"
+msgstr ""
+
+#: includes/class-admin.php:249
+#: includes/class-admin.php:664
+msgid "Second destination (B)"
+msgstr ""
+
+#: includes/class-admin.php:264
+msgid "Design a custom QR code, then download it as PNG or SVG."
+msgstr ""
+
+#: includes/class-admin.php:271
+msgid "Content type"
+msgstr ""
+
+#: includes/class-admin.php:273
+msgid "Website (URL)"
+msgstr ""
+
+#: includes/class-admin.php:274
+msgid "WiFi network"
+msgstr ""
+
+#: includes/class-admin.php:275
+msgid "Contact (vCard)"
+msgstr ""
+
+#: includes/class-admin.php:276
+#: includes/class-admin.php:376
+msgid "Email"
+msgstr ""
+
+#: includes/class-admin.php:277
+msgid "SMS"
+msgstr ""
+
+#: includes/class-admin.php:278
+#: includes/class-admin.php:423
+#: includes/class-admin.php:435
+msgid "Phone number"
+msgstr ""
+
+#: includes/class-admin.php:279
+msgid "Calendar event"
+msgstr ""
+
+#: includes/class-admin.php:280
+msgid "Plain text"
+msgstr ""
+
+#: includes/class-admin.php:285
+#: includes/class-admin.php:286
+msgid "Code type"
+msgstr ""
+
+#: includes/class-admin.php:288
+msgid "Direct"
+msgstr ""
+
+#: includes/class-admin.php:291
+msgid "Trackable"
+msgstr ""
+
+#: includes/class-admin.php:300
+msgid "Content (URL)"
+msgstr ""
+
+#: includes/class-admin.php:304
+msgid "Campaign tracking (UTM)"
+msgstr ""
+
+#: includes/class-admin.php:307
+msgid "Source"
+msgstr ""
+
+#: includes/class-admin.php:308
+msgid "e.g. flyer"
+msgstr ""
+
+#: includes/class-admin.php:311
+msgid "Medium"
+msgstr ""
+
+#: includes/class-admin.php:312
+msgid "e.g. qr"
+msgstr ""
+
+#: includes/class-admin.php:315
+msgid "Campaign"
+msgstr ""
+
+#: includes/class-admin.php:316
+msgid "e.g. summer-2026"
+msgstr ""
+
+#: includes/class-admin.php:325
+msgid "Network name (SSID)"
+msgstr ""
+
+#: includes/class-admin.php:330
+msgid "Password"
+msgstr ""
+
+#: includes/class-admin.php:334
+msgid "Security"
+msgstr ""
+
+#: includes/class-admin.php:336
+msgid "WPA/WPA2/WPA3"
+msgstr ""
+
+#: includes/class-admin.php:337
+msgid "WEP"
+msgstr ""
+
+#: includes/class-admin.php:338
+msgid "None (open)"
+msgstr ""
+
+#: includes/class-admin.php:344
+msgid "Hidden network"
+msgstr ""
+
+#: includes/class-admin.php:352
+msgid "First name"
+msgstr ""
+
+#: includes/class-admin.php:356
+msgid "Last name"
+msgstr ""
+
+#: includes/class-admin.php:362
+msgid "Organisation"
+msgstr ""
+
+#: includes/class-admin.php:366
+msgid "Job title"
+msgstr ""
+
+#: includes/class-admin.php:372
+msgid "Phone"
+msgstr ""
+
+#: includes/class-admin.php:381
+msgid "Website"
+msgstr ""
+
+#: includes/class-admin.php:385
+msgid "Street address"
+msgstr ""
+
+#: includes/class-admin.php:390
+msgid "City"
+msgstr ""
+
+#: includes/class-admin.php:394
+msgid "Postcode"
+msgstr ""
+
+#: includes/class-admin.php:398
+msgid "Country"
+msgstr ""
+
+#: includes/class-admin.php:407
+msgid "To (email address)"
+msgstr ""
+
+#: includes/class-admin.php:411
+msgid "Subject"
+msgstr ""
+
+#: includes/class-admin.php:415
+msgid "Body"
+msgstr ""
+
+#: includes/class-admin.php:427
+msgid "Message"
+msgstr ""
+
+#: includes/class-admin.php:443
+msgid "Event title"
+msgstr ""
+
+#: includes/class-admin.php:448
+msgid "Starts"
+msgstr ""
+
+#: includes/class-admin.php:452
+msgid "Ends"
+msgstr ""
+
+#: includes/class-admin.php:457
+msgid "Location"
+msgstr ""
+
+#: includes/class-admin.php:461
+msgid "Description"
+msgstr ""
+
+#: includes/class-admin.php:469
+#: includes/class-admin.php:575
+msgid "Text"
+msgstr ""
+
+#: includes/class-admin.php:476
+msgid "Dot shape"
+msgstr ""
+
+#: includes/class-admin.php:478
+#: includes/class-admin.php:490
+#: includes/class-admin.php:500
+msgid "Square"
+msgstr ""
+
+#: includes/class-admin.php:479
+#: includes/class-admin.php:491
+msgid "Rounded"
+msgstr ""
+
+#: includes/class-admin.php:480
+msgid "Dots"
+msgstr ""
+
+#: includes/class-admin.php:481
+msgid "Classy"
+msgstr ""
+
+#: includes/class-admin.php:482
+msgid "Classy rounded"
+msgstr ""
+
+#: includes/class-admin.php:483
+msgid "Extra rounded"
+msgstr ""
+
+#: includes/class-admin.php:488
+msgid "Corner shape"
+msgstr ""
+
+#: includes/class-admin.php:492
+#: includes/class-admin.php:501
+msgid "Dot"
+msgstr ""
+
+#: includes/class-admin.php:497
+msgid "Corner dot"
+msgstr ""
+
+#: includes/class-admin.php:499
+msgid "Auto"
+msgstr ""
+
+#: includes/class-admin.php:508
+msgid "Foreground"
+msgstr ""
+
+#: includes/class-admin.php:513
+msgid "Background"
+msgstr ""
+
+#: includes/class-admin.php:519
+msgid "Invert"
+msgstr ""
+
+#: includes/class-admin.php:526
+msgid "Gradient"
+msgstr ""
+
+#: includes/class-admin.php:528
+msgid "None (solid)"
+msgstr ""
+
+#: includes/class-admin.php:529
+msgid "Linear"
+msgstr ""
+
+#: includes/class-admin.php:530
+msgid "Radial"
+msgstr ""
+
+#: includes/class-admin.php:535
+msgid "Second colour"
+msgstr ""
+
+#: includes/class-admin.php:542
+msgid "Transparent background"
+msgstr ""
+
+#: includes/class-admin.php:546
+msgid "Centre logo"
+msgstr ""
+
+#: includes/class-admin.php:549
+msgid "Media Library…"
+msgstr ""
+
+#: includes/class-admin.php:552
+msgid "Upload…"
+msgstr ""
+
+#: includes/class-admin.php:556
+msgid "Remove"
+msgstr ""
+
+#: includes/class-admin.php:564
+msgid "Frame"
+msgstr ""
+
+#: includes/class-admin.php:567
+msgid "Style"
+msgstr ""
+
+#: includes/class-admin.php:569
+msgid "None"
+msgstr ""
+
+#: includes/class-admin.php:570
+msgid "Label below"
+msgstr ""
+
+#: includes/class-admin.php:571
+msgid "Label above"
+msgstr ""
+
+#: includes/class-admin.php:581
+msgid "Band colour"
+msgstr ""
+
+#: includes/class-admin.php:585
+msgid "Text colour"
+msgstr ""
+
+#: includes/class-admin.php:593
+msgid "Presets"
+msgstr ""
+
+#: includes/class-admin.php:596
+msgid "— Apply a preset —"
+msgstr ""
+
+#: includes/class-admin.php:603
+msgid "Preset name"
+msgstr ""
+
+#: includes/class-admin.php:605
+msgid "Save preset"
+msgstr ""
+
+#: includes/class-admin.php:613
+msgid "Export size (px)"
+msgstr ""
+
+#: includes/class-admin.php:617
+msgid "Downloaded PNG resolution (128–1024). SVG stays vector."
+msgstr ""
+
+#: includes/class-admin.php:623
+msgid "Label (for your stats)"
+msgstr ""
+
+#: includes/class-admin.php:624
+msgid "e.g. Business card"
+msgstr ""
+
+#: includes/class-admin.php:627
+msgid "Custom link (optional)"
+msgstr ""
+
+#: includes/class-admin.php:630
+msgid "e.g. summer-sale"
+msgstr ""
+
+#: includes/class-admin.php:635
+msgid "Advanced options"
+msgstr ""
+
+#: includes/class-admin.php:639
+msgid "Expires"
+msgstr ""
+
+#: includes/class-admin.php:643
+msgid "Scan limit"
+msgstr ""
+
+#: includes/class-admin.php:644
+msgid "0 = unlimited"
+msgstr ""
+
+#: includes/class-admin.php:649
+msgid "Fallback URL (expired/paused/limit reached)"
+msgstr ""
+
+#: includes/class-admin.php:650
+msgid "Leave empty for a plain “no longer active” page"
+msgstr ""
+
+#: includes/class-admin.php:654
+msgid "Destination mode"
+msgstr ""
+
+#: includes/class-admin.php:656
+msgid "Single destination"
+msgstr ""
+
+#: includes/class-admin.php:657
+msgid "Switch on a date"
+msgstr ""
+
+#: includes/class-admin.php:658
+msgid "A/B rotation"
+msgstr ""
+
+#: includes/class-admin.php:668
+msgid "Switch over at"
+msgstr ""
+
+#: includes/class-admin.php:673
+msgid "Traffic to B (%)"
+msgstr ""
+
+#: includes/class-admin.php:682
+msgid "Save &amp; make trackable"
+msgstr ""
+
+#: includes/class-admin.php:695
+msgid "PNG"
+msgstr ""
+
+#: includes/class-admin.php:698
+msgid "JPEG"
+msgstr ""
+
+#: includes/class-admin.php:701
+msgid "SVG"
+msgstr ""
+
+#: includes/class-dashboard-widget.php:34
+msgid "Gallus QR — top codes (last 7 days)"
+msgstr ""
+
+#: includes/class-dashboard-widget.php:44
+msgid "No scans in the last 7 days."
+msgstr ""
+
+#: includes/class-dashboard-widget.php:62
+msgid "Full scan stats →"
+msgstr ""
+
+#: includes/class-database.php:155
+msgid "Slugs may only use lowercase letters, numbers and hyphens (max 64 characters)."
+msgstr ""
+
+#: includes/class-database.php:168
+msgid "That slug is reserved — pick another."
+msgstr ""
+
+#: includes/class-integrations.php:72
+#: block/editor.js:92
+msgid "QR code"
+msgstr ""
+
+#: includes/class-integrations.php:108
+msgid "QR for this page"
+msgstr ""
+
+#: includes/class-payloads.php:68
+#: includes/class-rest.php:331
+msgid "Unknown payload type."
+msgstr ""
+
+#: includes/class-payloads.php:150
+msgid "Enter some text to encode."
+msgstr ""
+
+#: includes/class-payloads.php:162
+msgid "A network name (SSID) is required."
+msgstr ""
+
+#: includes/class-payloads.php:165
+msgid "A password is required unless the network is open."
+msgstr ""
+
+#: includes/class-payloads.php:183
+msgid "A contact needs at least a name."
+msgstr ""
+
+#: includes/class-payloads.php:227
+msgid "A valid recipient email address is required."
+msgstr ""
+
+#: includes/class-payloads.php:248
+#: includes/class-payloads.php:257
+msgid "A phone number is required."
+msgstr ""
+
+#: includes/class-payloads.php:267
+msgid "An event title is required."
+msgstr ""
+
+#: includes/class-payloads.php:270
+msgid "A valid start date/time is required."
+msgstr ""
+
+#: includes/class-redirect.php:71
+msgid "QR code not found."
+msgstr ""
+
+#: includes/class-redirect.php:72
+msgid "Not found"
+msgstr ""
+
+#: includes/class-redirect.php:178
+msgid "This QR code is no longer active."
+msgstr ""
+
+#: includes/class-redirect.php:179
+msgid "QR code inactive"
+msgstr ""
+
+#: includes/class-rest.php:340
+msgid "Only URL codes can be trackable."
+msgstr ""
+
+#: includes/class-rest.php:351
+#: includes/class-rest.php:452
+msgid "A valid destination URL is required."
+msgstr ""
+
+#: includes/class-rest.php:376
+msgid "That slug is already taken."
+msgstr ""
+
+#: includes/class-rest.php:402
+msgid "Could not save the code. Please try again."
+msgstr ""
+
+#: includes/class-rest.php:444
+msgid "Only URL codes can be re-pointed — other types encode their content directly."
+msgstr ""
+
+#: includes/class-rest.php:462
+msgid "Nothing to update."
+msgstr ""
+
+#: includes/class-rest.php:523
+msgid "Available."
+msgstr ""
+
+#: includes/class-rest.php:524
+msgid "Already taken."
+msgstr ""
+
+#: includes/class-rest.php:562
+msgid "A preset needs a name and a design."
+msgstr ""
+
+#: includes/class-rest.php:666
+msgid "Invalid expiry date/time."
+msgstr ""
+
+#: includes/class-rest.php:687
+msgid "The fallback must be a valid URL."
+msgstr ""
+
+#: includes/class-rest.php:706
+msgid "The second destination must be a valid URL."
+msgstr ""
+
+#: includes/class-rest.php:721
+msgid "Invalid switch-over date/time."
+msgstr ""
+
+#: includes/class-settings.php:136
+msgid "Gallus QR — Settings"
+msgstr ""
+
+#: includes/class-settings.php:139
+msgid "Settings saved."
+msgstr ""
+
+#: includes/class-settings.php:149
+msgid "Extra role with access"
+msgstr ""
+
+#: includes/class-settings.php:153
+msgid "Administrators only"
+msgstr ""
+
+#: includes/class-settings.php:165
+msgid "Administrators can always manage QR codes; pick one more role to share access with."
+msgstr ""
+
+#: includes/class-settings.php:170
+msgid "Keep scan data for"
+msgstr ""
+
+#: includes/class-settings.php:174
+msgid "days (0 = forever)"
+msgstr ""
+
+#: includes/class-settings.php:175
+msgid "Older scan rows are pruned daily. Lifetime totals and scan limits are unaffected."
+msgstr ""
+
+#: includes/class-settings.php:179
+msgid "Bot filtering"
+msgstr ""
+
+#: includes/class-settings.php:183
+msgid "Don’t count scans from crawlers and link-preview bots"
+msgstr ""
+
+#: includes/class-settings.php:189
+msgid "Default fallback URL"
+msgstr ""
+
+#: includes/class-settings.php:193
+msgid "Where paused, expired or limit-reached codes send visitors when the code has no fallback of its own. Empty = a plain “no longer active” page."
+msgstr ""
+
+#: includes/class-settings.php:197
+msgid "Uninstall"
+msgstr ""
+
+#: includes/class-settings.php:201
+msgid "Delete all codes, scans and settings when the plugin is uninstalled"
+msgstr ""
+
+#: includes/class-settings.php:207
+msgid "Save settings"
+msgstr ""
+
+#: block/editor.js:94
+msgid "Saved code"
+msgstr ""
+
+#: block/editor.js:102
+msgid "Display size (px)"
+msgstr ""
+
+#: block/editor.js:116
+#: block/editor.js:120
+#: block/editor.js:126
+msgid "Gallus QR Code"
+msgstr ""
+
+#: block/editor.js:121
+msgid "No saved codes yet — create one under Gallus QR in the admin menu."
+msgstr ""
+
+#: block/editor.js:128
+msgid "Pick a saved code"
+msgstr ""
+
+#: block/block.json
+msgctxt "block title"
+msgid "Gallus QR Code"
+msgstr ""
+
+#: block/block.json
+msgctxt "block description"
+msgid "Display one of your saved Gallus QR codes."
+msgstr ""
+
+#: block/block.json
+msgctxt "block keyword"
+msgid "qr"
+msgstr ""
+
+#: block/block.json
+msgctxt "block keyword"
+msgid "qr code"
+msgstr ""
+
+#: block/block.json
+msgctxt "block keyword"
+msgid "gallus"
+msgstr ""
