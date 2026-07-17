@@ -70,6 +70,17 @@ The bundled QR rendering engine `assets/js/lib/qr-code-styling.js` is
 qr-code-styling v1.6.0 (MIT). Human-readable source:
 https://github.com/kozakdenys/qr-code-styling
 
+== Roadmap ==
+
+* **Trackable vCard and calendar codes (hosted payloads)** — instead of
+  encoding the contact/event text directly, the QR encodes your short
+  `/qr/{slug}` link; the site logs the scan and serves the `.vcf`/`.ics`
+  file. Scan counts *and* the ability to fix a typo after your business
+  cards are printed. (WiFi/SMS/phone codes can't work this way — those are
+  parsed on the phone with no request to intercept.)
+* **PDF export** — print-shop friendly output alongside PNG/JPEG/SVG.
+* **Multi-step destination schedules** — more than one switch-over date.
+
 == Frequently Asked Questions ==
 
 = What's the difference between Direct and Trackable codes? =
