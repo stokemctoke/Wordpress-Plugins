@@ -11,6 +11,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Gallus_QR_Admin {
 
+	/** Ko-fi page for the (entirely optional) coffee. */
+	const DONATE_URL = 'https://ko-fi.com/stoke';
+
+	/** Saved codes before the one-time donate nudge appears. */
+	const DONATE_NUDGE_AFTER = 10;
+
 	/** @var Gallus_QR_Database */
 	private $db;
 
@@ -40,6 +46,106 @@ class Gallus_QR_Admin {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_head', array( $this, 'menu_icon_css' ) );
+
+		// Tasteful donation touchpoints — all confined to this plugin's own
+		// screens (plus its row on the Plugins page). Never site-wide.
+		add_filter( 'admin_footer_text', array( $this, 'footer_text' ) );
+		add_filter( 'plugin_row_meta', array( $this, 'plugin_row_meta' ), 10, 2 );
+		add_action( 'admin_notices', array( $this, 'maybe_donate_notice' ) );
+		add_action( 'admin_init', array( $this, 'handle_donate_dismiss' ) );
+	}
+
+	/** @return bool Is the current screen one of this plugin's pages? */
+	private function is_plugin_screen() {
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		return $screen && false !== strpos( (string) $screen->id, 'gallus-qr' );
+	}
+
+	/**
+	 * Swap the "Thank you for creating with WordPress" footer for a coffee
+	 * link — only on Gallus QR screens.
+	 *
+	 * @param string $text
+	 * @return string
+	 */
+	public function footer_text( $text ) {
+		if ( ! $this->is_plugin_screen() ) {
+			return $text;
+		}
+		return sprintf(
+			/* translators: %s: donation link. */
+			esc_html__( 'Enjoying Gallus QR? %s', 'gallus-qr' ),
+			'<a href="' . esc_url( self::DONATE_URL ) . '" target="_blank" rel="noopener">'
+				. esc_html__( 'Buy me a coffee ☕', 'gallus-qr' ) . '</a>'
+		);
+	}
+
+	/**
+	 * Add a Donate link to the plugin's row on the Plugins screen.
+	 *
+	 * @param array  $links
+	 * @param string $file
+	 * @return array
+	 */
+	public function plugin_row_meta( $links, $file ) {
+		if ( plugin_basename( GALLUS_QR_PATH . 'gallus-qr.php' ) === $file ) {
+			$links[] = '<a href="' . esc_url( self::DONATE_URL ) . '" target="_blank" rel="noopener">'
+				. esc_html__( 'Donate ☕', 'gallus-qr' ) . '</a>';
+		}
+		return $links;
+	}
+
+	/**
+	 * A single, permanently-dismissible thank-you nudge, shown only on this
+	 * plugin's screens once the user has saved enough codes to clearly be
+	 * getting value out of it.
+	 */
+	public function maybe_donate_notice() {
+		if ( ! $this->is_plugin_screen()
+			|| ! current_user_can( Gallus_QR_Settings::capability() )
+			|| get_option( 'gallus_qr_donate_dismissed' )
+			|| $this->db->count_codes() < self::DONATE_NUDGE_AFTER ) {
+			return;
+		}
+
+		$dismiss = wp_nonce_url(
+			add_query_arg( 'gqr_dismiss_donate', '1' ),
+			'gqr_dismiss_donate'
+		);
+		?>
+		<div class="notice notice-info gqr-donate-notice">
+			<p>
+				<?php
+				printf(
+					/* translators: %d: number of saved codes. */
+					esc_html__( 'You’ve made %d QR codes with Gallus QR — brilliant! It’s free and always will be, but if it’s been useful, a coffee keeps the updates coming.', 'gallus-qr' ),
+					(int) $this->db->count_codes()
+				);
+				?>
+			</p>
+			<p>
+				<a class="button button-primary" href="<?php echo esc_url( self::DONATE_URL ); ?>" target="_blank" rel="noopener">
+					<?php esc_html_e( 'Buy me a coffee ☕', 'gallus-qr' ); ?>
+				</a>
+				<a class="button-link" href="<?php echo esc_url( $dismiss ); ?>" style="margin-left:0.75em">
+					<?php esc_html_e( 'No thanks — never show this again', 'gallus-qr' ); ?>
+				</a>
+			</p>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Permanently dismiss the donate nudge (nonce-checked query arg).
+	 */
+	public function handle_donate_dismiss() {
+		if ( ! isset( $_GET['gqr_dismiss_donate'] )
+			|| ! check_admin_referer( 'gqr_dismiss_donate' ) ) {
+			return;
+		}
+		update_option( 'gallus_qr_donate_dismissed', 1, false );
+		wp_safe_redirect( remove_query_arg( array( 'gqr_dismiss_donate', '_wpnonce' ) ) );
+		exit;
 	}
 
 	/**

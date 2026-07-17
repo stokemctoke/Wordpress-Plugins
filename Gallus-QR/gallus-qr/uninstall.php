@@ -28,6 +28,7 @@ $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}gallus_qr_presets" );
 
 delete_option( 'gallus_qr_settings' );
 delete_option( 'gallus_qr_db_version' );
+delete_option( 'gallus_qr_donate_dismissed' );
 
 // Remove the plugin capability from every role.
 foreach ( array_keys( wp_roles()->roles ) as $gallus_qr_role_key ) {

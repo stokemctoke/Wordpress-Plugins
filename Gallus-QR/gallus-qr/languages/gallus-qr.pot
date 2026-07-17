@@ -9,16 +9,16 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-07-17T02:38:38+00:00\n"
+"POT-Creation-Date: 2026-07-17T05:06:49+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: gallus-qr\n"
 
 #. Plugin Name of the plugin
 #: gallus-qr.php
-#: includes/class-admin.php:52
-#: includes/class-admin.php:53
-#: includes/class-admin.php:262
+#: includes/class-admin.php:158
+#: includes/class-admin.php:159
+#: includes/class-admin.php:368
 msgid "Gallus QR"
 msgstr ""
 
@@ -156,7 +156,7 @@ msgid "%d unique"
 msgstr ""
 
 #: includes/class-admin-stats.php:262
-#: includes/class-admin.php:599
+#: includes/class-admin.php:705
 msgid "Delete"
 msgstr ""
 
@@ -269,578 +269,603 @@ msgstr ""
 msgid "No such QR code."
 msgstr ""
 
-#: includes/class-admin.php:63
-#: includes/class-admin.php:64
+#. translators: %s: donation link.
+#: includes/class-admin.php:77
+#, php-format
+msgid "Enjoying Gallus QR? %s"
+msgstr ""
+
+#: includes/class-admin.php:79
+#: includes/class-admin.php:128
+msgid "Buy me a coffee ☕"
+msgstr ""
+
+#: includes/class-admin.php:93
+msgid "Donate ☕"
+msgstr ""
+
+#. translators: %d: number of saved codes.
+#: includes/class-admin.php:121
+#, php-format
+msgid "You’ve made %d QR codes with Gallus QR — brilliant! It’s free and always will be, but if it’s been useful, a coffee keeps the updates coming."
+msgstr ""
+
+#: includes/class-admin.php:131
+msgid "No thanks — never show this again"
+msgstr ""
+
+#: includes/class-admin.php:169
+#: includes/class-admin.php:170
 msgid "Generator"
 msgstr ""
 
-#: includes/class-admin.php:72
-#: includes/class-admin.php:73
+#: includes/class-admin.php:178
+#: includes/class-admin.php:179
 msgid "Scan Stats"
 msgstr ""
 
-#: includes/class-admin.php:82
-#: includes/class-admin.php:83
+#: includes/class-admin.php:188
+#: includes/class-admin.php:189
 msgid "Bulk import"
 msgstr ""
 
-#: includes/class-admin.php:92
-#: includes/class-admin.php:93
+#: includes/class-admin.php:198
+#: includes/class-admin.php:199
 msgid "Settings"
 msgstr ""
 
-#: includes/class-admin.php:182
+#: includes/class-admin.php:288
 msgid "Code renamed."
 msgstr ""
 
-#: includes/class-admin.php:183
+#: includes/class-admin.php:289
 msgid "Destination updated — the printed code now points to the new URL."
 msgstr ""
 
-#: includes/class-admin.php:184
+#: includes/class-admin.php:290
 msgid "Delete this code and all its scan data? This cannot be undone."
 msgstr ""
 
-#: includes/class-admin.php:185
+#: includes/class-admin.php:291
 msgid "Request failed."
 msgstr ""
 
-#: includes/class-admin.php:223
+#: includes/class-admin.php:329
 msgid "Routes through your site so every scan is counted. Save it to generate the tracked link."
 msgstr ""
 
-#: includes/class-admin.php:224
+#: includes/class-admin.php:330
 msgid "Encodes your URL directly. Works forever, but scans can’t be counted — best for permanent things like PCBs."
 msgstr ""
 
-#: includes/class-admin.php:225
+#: includes/class-admin.php:331
 msgid "Save & make trackable"
 msgstr ""
 
-#: includes/class-admin.php:226
+#: includes/class-admin.php:332
 msgid "Save to library"
 msgstr ""
 
-#: includes/class-admin.php:227
+#: includes/class-admin.php:333
 msgid "Saving…"
 msgstr ""
 
-#: includes/class-admin.php:228
+#: includes/class-admin.php:334
 msgid "○ Direct — not tracked"
 msgstr ""
 
-#: includes/class-admin.php:229
+#: includes/class-admin.php:335
 msgid "● Saved to library — not tracked"
 msgstr ""
 
-#: includes/class-admin.php:230
+#: includes/class-admin.php:336
 msgid "● Tracked · via"
 msgstr ""
 
-#: includes/class-admin.php:231
+#: includes/class-admin.php:337
 msgid "○ Trackable — not saved yet"
 msgstr ""
 
-#: includes/class-admin.php:232
+#: includes/class-admin.php:338
 msgid "Encodes →"
 msgstr ""
 
-#: includes/class-admin.php:233
+#: includes/class-admin.php:339
 msgid "Save to generate your tracked link, then download."
 msgstr ""
 
-#: includes/class-admin.php:234
+#: includes/class-admin.php:340
 msgid "Save first — otherwise you’d download an untracked code."
 msgstr ""
 
-#: includes/class-admin.php:235
+#: includes/class-admin.php:341
 msgid "Enter a URL first."
 msgstr ""
 
-#: includes/class-admin.php:236
+#: includes/class-admin.php:342
 msgid "Fill in the required fields first."
 msgstr ""
 
-#: includes/class-admin.php:237
+#: includes/class-admin.php:343
 msgid "Saving is unavailable (REST config missing)."
 msgstr ""
 
-#: includes/class-admin.php:238
+#: includes/class-admin.php:344
 msgid "Save failed."
 msgstr ""
 
-#: includes/class-admin.php:239
+#: includes/class-admin.php:345
 msgid "Saved — find it under Scan Stats for re-downloads."
 msgstr ""
 
-#: includes/class-admin.php:240
+#: includes/class-admin.php:346
 msgid "Choose a centre logo"
 msgstr ""
 
-#: includes/class-admin.php:241
+#: includes/class-admin.php:347
 msgid "Use as logo"
 msgstr ""
 
-#: includes/class-admin.php:242
+#: includes/class-admin.php:348
 msgid "Logo: media library"
 msgstr ""
 
-#: includes/class-admin.php:243
+#: includes/class-admin.php:349
 msgid "Logo: uploaded file"
 msgstr ""
 
-#: includes/class-admin.php:244
+#: includes/class-admin.php:350
 msgid "Give the preset a name first."
 msgstr ""
 
-#: includes/class-admin.php:245
+#: includes/class-admin.php:351
 msgid "Preset saved."
 msgstr ""
 
-#: includes/class-admin.php:246
+#: includes/class-admin.php:352
 msgid "Preset deleted."
 msgstr ""
 
-#: includes/class-admin.php:247
+#: includes/class-admin.php:353
 #: includes/class-rest.php:571
 msgid "Could not save the preset."
 msgstr ""
 
-#: includes/class-admin.php:248
+#: includes/class-admin.php:354
 msgid "Destination after the switch"
 msgstr ""
 
-#: includes/class-admin.php:249
-#: includes/class-admin.php:664
+#: includes/class-admin.php:355
+#: includes/class-admin.php:770
 msgid "Second destination (B)"
 msgstr ""
 
-#: includes/class-admin.php:264
+#: includes/class-admin.php:370
 msgid "Design a custom QR code, then download it as PNG or SVG."
 msgstr ""
 
-#: includes/class-admin.php:271
+#: includes/class-admin.php:377
 msgid "Content type"
 msgstr ""
 
-#: includes/class-admin.php:273
+#: includes/class-admin.php:379
 msgid "Website (URL)"
 msgstr ""
 
-#: includes/class-admin.php:274
+#: includes/class-admin.php:380
 msgid "WiFi network"
 msgstr ""
 
-#: includes/class-admin.php:275
+#: includes/class-admin.php:381
 msgid "Contact (vCard)"
 msgstr ""
 
-#: includes/class-admin.php:276
-#: includes/class-admin.php:376
+#: includes/class-admin.php:382
+#: includes/class-admin.php:482
 msgid "Email"
 msgstr ""
 
-#: includes/class-admin.php:277
+#: includes/class-admin.php:383
 msgid "SMS"
 msgstr ""
 
-#: includes/class-admin.php:278
-#: includes/class-admin.php:423
-#: includes/class-admin.php:435
+#: includes/class-admin.php:384
+#: includes/class-admin.php:529
+#: includes/class-admin.php:541
 msgid "Phone number"
 msgstr ""
 
-#: includes/class-admin.php:279
+#: includes/class-admin.php:385
 msgid "Calendar event"
 msgstr ""
 
-#: includes/class-admin.php:280
+#: includes/class-admin.php:386
 msgid "Plain text"
 msgstr ""
 
-#: includes/class-admin.php:285
-#: includes/class-admin.php:286
+#: includes/class-admin.php:391
+#: includes/class-admin.php:392
 msgid "Code type"
 msgstr ""
 
-#: includes/class-admin.php:288
+#: includes/class-admin.php:394
 msgid "Direct"
 msgstr ""
 
-#: includes/class-admin.php:291
+#: includes/class-admin.php:397
 msgid "Trackable"
 msgstr ""
 
-#: includes/class-admin.php:300
+#: includes/class-admin.php:406
 msgid "Content (URL)"
 msgstr ""
 
-#: includes/class-admin.php:304
+#: includes/class-admin.php:410
 msgid "Campaign tracking (UTM)"
 msgstr ""
 
-#: includes/class-admin.php:307
+#: includes/class-admin.php:413
 msgid "Source"
 msgstr ""
 
-#: includes/class-admin.php:308
+#: includes/class-admin.php:414
 msgid "e.g. flyer"
 msgstr ""
 
-#: includes/class-admin.php:311
+#: includes/class-admin.php:417
 msgid "Medium"
 msgstr ""
 
-#: includes/class-admin.php:312
+#: includes/class-admin.php:418
 msgid "e.g. qr"
 msgstr ""
 
-#: includes/class-admin.php:315
+#: includes/class-admin.php:421
 msgid "Campaign"
 msgstr ""
 
-#: includes/class-admin.php:316
+#: includes/class-admin.php:422
 msgid "e.g. summer-2026"
 msgstr ""
 
-#: includes/class-admin.php:325
+#: includes/class-admin.php:431
 msgid "Network name (SSID)"
 msgstr ""
 
-#: includes/class-admin.php:330
+#: includes/class-admin.php:436
 msgid "Password"
 msgstr ""
 
-#: includes/class-admin.php:334
+#: includes/class-admin.php:440
 msgid "Security"
 msgstr ""
 
-#: includes/class-admin.php:336
+#: includes/class-admin.php:442
 msgid "WPA/WPA2/WPA3"
 msgstr ""
 
-#: includes/class-admin.php:337
+#: includes/class-admin.php:443
 msgid "WEP"
 msgstr ""
 
-#: includes/class-admin.php:338
+#: includes/class-admin.php:444
 msgid "None (open)"
 msgstr ""
 
-#: includes/class-admin.php:344
+#: includes/class-admin.php:450
 msgid "Hidden network"
 msgstr ""
 
-#: includes/class-admin.php:352
+#: includes/class-admin.php:458
 msgid "First name"
 msgstr ""
 
-#: includes/class-admin.php:356
+#: includes/class-admin.php:462
 msgid "Last name"
 msgstr ""
 
-#: includes/class-admin.php:362
+#: includes/class-admin.php:468
 msgid "Organisation"
 msgstr ""
 
-#: includes/class-admin.php:366
+#: includes/class-admin.php:472
 msgid "Job title"
 msgstr ""
 
-#: includes/class-admin.php:372
+#: includes/class-admin.php:478
 msgid "Phone"
 msgstr ""
 
-#: includes/class-admin.php:381
+#: includes/class-admin.php:487
 msgid "Website"
 msgstr ""
 
-#: includes/class-admin.php:385
+#: includes/class-admin.php:491
 msgid "Street address"
 msgstr ""
 
-#: includes/class-admin.php:390
+#: includes/class-admin.php:496
 msgid "City"
 msgstr ""
 
-#: includes/class-admin.php:394
+#: includes/class-admin.php:500
 msgid "Postcode"
 msgstr ""
 
-#: includes/class-admin.php:398
+#: includes/class-admin.php:504
 msgid "Country"
 msgstr ""
 
-#: includes/class-admin.php:407
+#: includes/class-admin.php:513
 msgid "To (email address)"
 msgstr ""
 
-#: includes/class-admin.php:411
+#: includes/class-admin.php:517
 msgid "Subject"
 msgstr ""
 
-#: includes/class-admin.php:415
+#: includes/class-admin.php:521
 msgid "Body"
 msgstr ""
 
-#: includes/class-admin.php:427
+#: includes/class-admin.php:533
 msgid "Message"
 msgstr ""
 
-#: includes/class-admin.php:443
+#: includes/class-admin.php:549
 msgid "Event title"
 msgstr ""
 
-#: includes/class-admin.php:448
+#: includes/class-admin.php:554
 msgid "Starts"
 msgstr ""
 
-#: includes/class-admin.php:452
+#: includes/class-admin.php:558
 msgid "Ends"
 msgstr ""
 
-#: includes/class-admin.php:457
+#: includes/class-admin.php:563
 msgid "Location"
 msgstr ""
 
-#: includes/class-admin.php:461
+#: includes/class-admin.php:567
 msgid "Description"
 msgstr ""
 
-#: includes/class-admin.php:469
 #: includes/class-admin.php:575
+#: includes/class-admin.php:681
 msgid "Text"
 msgstr ""
 
-#: includes/class-admin.php:476
+#: includes/class-admin.php:582
 msgid "Dot shape"
 msgstr ""
 
-#: includes/class-admin.php:478
-#: includes/class-admin.php:490
-#: includes/class-admin.php:500
+#: includes/class-admin.php:584
+#: includes/class-admin.php:596
+#: includes/class-admin.php:606
 msgid "Square"
 msgstr ""
 
-#: includes/class-admin.php:479
-#: includes/class-admin.php:491
+#: includes/class-admin.php:585
+#: includes/class-admin.php:597
 msgid "Rounded"
 msgstr ""
 
-#: includes/class-admin.php:480
+#: includes/class-admin.php:586
 msgid "Dots"
 msgstr ""
 
-#: includes/class-admin.php:481
+#: includes/class-admin.php:587
 msgid "Classy"
 msgstr ""
 
-#: includes/class-admin.php:482
+#: includes/class-admin.php:588
 msgid "Classy rounded"
 msgstr ""
 
-#: includes/class-admin.php:483
+#: includes/class-admin.php:589
 msgid "Extra rounded"
 msgstr ""
 
-#: includes/class-admin.php:488
+#: includes/class-admin.php:594
 msgid "Corner shape"
 msgstr ""
 
-#: includes/class-admin.php:492
-#: includes/class-admin.php:501
+#: includes/class-admin.php:598
+#: includes/class-admin.php:607
 msgid "Dot"
 msgstr ""
 
-#: includes/class-admin.php:497
+#: includes/class-admin.php:603
 msgid "Corner dot"
 msgstr ""
 
-#: includes/class-admin.php:499
+#: includes/class-admin.php:605
 msgid "Auto"
 msgstr ""
 
-#: includes/class-admin.php:508
+#: includes/class-admin.php:614
 msgid "Foreground"
 msgstr ""
 
-#: includes/class-admin.php:513
+#: includes/class-admin.php:619
 msgid "Background"
 msgstr ""
 
-#: includes/class-admin.php:519
+#: includes/class-admin.php:625
 msgid "Invert"
 msgstr ""
 
-#: includes/class-admin.php:526
+#: includes/class-admin.php:632
 msgid "Gradient"
 msgstr ""
 
-#: includes/class-admin.php:528
+#: includes/class-admin.php:634
 msgid "None (solid)"
 msgstr ""
 
-#: includes/class-admin.php:529
+#: includes/class-admin.php:635
 msgid "Linear"
 msgstr ""
 
-#: includes/class-admin.php:530
+#: includes/class-admin.php:636
 msgid "Radial"
 msgstr ""
 
-#: includes/class-admin.php:535
+#: includes/class-admin.php:641
 msgid "Second colour"
 msgstr ""
 
-#: includes/class-admin.php:542
+#: includes/class-admin.php:648
 msgid "Transparent background"
 msgstr ""
 
-#: includes/class-admin.php:546
+#: includes/class-admin.php:652
 msgid "Centre logo"
 msgstr ""
 
-#: includes/class-admin.php:549
+#: includes/class-admin.php:655
 msgid "Media Library…"
 msgstr ""
 
-#: includes/class-admin.php:552
+#: includes/class-admin.php:658
 msgid "Upload…"
 msgstr ""
 
-#: includes/class-admin.php:556
+#: includes/class-admin.php:662
 msgid "Remove"
 msgstr ""
 
-#: includes/class-admin.php:564
+#: includes/class-admin.php:670
 msgid "Frame"
 msgstr ""
 
-#: includes/class-admin.php:567
+#: includes/class-admin.php:673
 msgid "Style"
 msgstr ""
 
-#: includes/class-admin.php:569
+#: includes/class-admin.php:675
 msgid "None"
 msgstr ""
 
-#: includes/class-admin.php:570
+#: includes/class-admin.php:676
 msgid "Label below"
 msgstr ""
 
-#: includes/class-admin.php:571
+#: includes/class-admin.php:677
 msgid "Label above"
 msgstr ""
 
-#: includes/class-admin.php:581
+#: includes/class-admin.php:687
 msgid "Band colour"
 msgstr ""
 
-#: includes/class-admin.php:585
+#: includes/class-admin.php:691
 msgid "Text colour"
 msgstr ""
 
-#: includes/class-admin.php:593
+#: includes/class-admin.php:699
 msgid "Presets"
 msgstr ""
 
-#: includes/class-admin.php:596
+#: includes/class-admin.php:702
 msgid "— Apply a preset —"
 msgstr ""
 
-#: includes/class-admin.php:603
+#: includes/class-admin.php:709
 msgid "Preset name"
 msgstr ""
 
-#: includes/class-admin.php:605
+#: includes/class-admin.php:711
 msgid "Save preset"
 msgstr ""
 
-#: includes/class-admin.php:613
+#: includes/class-admin.php:719
 msgid "Export size (px)"
 msgstr ""
 
-#: includes/class-admin.php:617
+#: includes/class-admin.php:723
 msgid "Downloaded PNG resolution (128–1024). SVG stays vector."
 msgstr ""
 
-#: includes/class-admin.php:623
+#: includes/class-admin.php:729
 msgid "Label (for your stats)"
 msgstr ""
 
-#: includes/class-admin.php:624
+#: includes/class-admin.php:730
 msgid "e.g. Business card"
 msgstr ""
 
-#: includes/class-admin.php:627
+#: includes/class-admin.php:733
 msgid "Custom link (optional)"
 msgstr ""
 
-#: includes/class-admin.php:630
+#: includes/class-admin.php:736
 msgid "e.g. summer-sale"
 msgstr ""
 
-#: includes/class-admin.php:635
+#: includes/class-admin.php:741
 msgid "Advanced options"
 msgstr ""
 
-#: includes/class-admin.php:639
+#: includes/class-admin.php:745
 msgid "Expires"
 msgstr ""
 
-#: includes/class-admin.php:643
+#: includes/class-admin.php:749
 msgid "Scan limit"
 msgstr ""
 
-#: includes/class-admin.php:644
+#: includes/class-admin.php:750
 msgid "0 = unlimited"
 msgstr ""
 
-#: includes/class-admin.php:649
+#: includes/class-admin.php:755
 msgid "Fallback URL (expired/paused/limit reached)"
 msgstr ""
 
-#: includes/class-admin.php:650
+#: includes/class-admin.php:756
 msgid "Leave empty for a plain “no longer active” page"
 msgstr ""
 
-#: includes/class-admin.php:654
+#: includes/class-admin.php:760
 msgid "Destination mode"
 msgstr ""
 
-#: includes/class-admin.php:656
+#: includes/class-admin.php:762
 msgid "Single destination"
 msgstr ""
 
-#: includes/class-admin.php:657
+#: includes/class-admin.php:763
 msgid "Switch on a date"
 msgstr ""
 
-#: includes/class-admin.php:658
+#: includes/class-admin.php:764
 msgid "A/B rotation"
 msgstr ""
 
-#: includes/class-admin.php:668
+#: includes/class-admin.php:774
 msgid "Switch over at"
 msgstr ""
 
-#: includes/class-admin.php:673
+#: includes/class-admin.php:779
 msgid "Traffic to B (%)"
 msgstr ""
 
-#: includes/class-admin.php:682
+#: includes/class-admin.php:788
 msgid "Save &amp; make trackable"
 msgstr ""
 
-#: includes/class-admin.php:695
+#: includes/class-admin.php:801
 msgid "PNG"
 msgstr ""
 
-#: includes/class-admin.php:698
+#: includes/class-admin.php:804
 msgid "JPEG"
 msgstr ""
 
-#: includes/class-admin.php:701
+#: includes/class-admin.php:807
 msgid "SVG"
 msgstr ""
 

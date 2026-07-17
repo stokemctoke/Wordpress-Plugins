@@ -1,5 +1,6 @@
 === Gallus QR ===
 Contributors: gallusgadgets
+Donate link: https://ko-fi.com/stoke
 Tags: qr code, qr, qr code generator, dynamic qr, analytics
 Requires at least: 6.3
 Tested up to: 6.8

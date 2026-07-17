@@ -500,6 +500,12 @@ class Gallus_QR_Database {
 		return false !== $wpdb->delete( $this->presets_table(), array( 'id' => (int) $id ), array( '%d' ) );
 	}
 
+	/** @return int Total number of saved codes. */
+	public function count_codes() {
+		global $wpdb;
+		return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$this->codes_table()}" );
+	}
+
 	/**
 	 * All saved codes, newest first, each with a total_scans column.
 	 *
