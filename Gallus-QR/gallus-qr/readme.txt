@@ -5,7 +5,7 @@ Tags: qr code, qr, qr code generator, dynamic qr, analytics
 Requires at least: 6.3
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 2.0.0
+Stable tag: 2.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -103,6 +103,13 @@ Cloudflare's `CF-IPCountry`). Without such a header the plugin records
 nothing — it never calls external geolocation services.
 
 == Changelog ==
+
+= 2.0.1 =
+* Added a public roadmap (trackable vCard/event codes via hosted payloads,
+  PDF export, multi-step schedules)
+* Added optional donation touchpoints: readme donate link, a footer line and
+  plugins-page link, and a single dismissible thank-you nudge after 10 saved
+  codes — shown only on the plugin's own screens
 
 = 2.0.0 =
 * New content types: WiFi, vCard, email, SMS, phone, calendar event, plain text
