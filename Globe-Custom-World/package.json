@@ -1,0 +1,20 @@
+{
+  "name": "world-builder-globe",
+  "version": "1.0.0",
+  "description": "WordPress plugin: interactive 3D planet builder with sliders for sea level, ice, vegetation, clouds, atmosphere, ocean color, sunlight, and rotation",
+  "private": true,
+  "scripts": {
+    "build": "npm run build:globe && npm run build:block && npm run build:css",
+    "build:globe": "esbuild src/globe.js --bundle --minify --format=iife --outfile=build/globe.js",
+    "build:block": "esbuild src/block.js --minify --outfile=build/block.js",
+    "build:css": "cp src/globe.css build/globe.css",
+    "textures": "python3 tools/build_textures.py"
+  },
+  "license": "GPL-2.0-or-later",
+  "devDependencies": {
+    "esbuild": "^0.28.1"
+  },
+  "dependencies": {
+    "three": "^0.185.1"
+  }
+}

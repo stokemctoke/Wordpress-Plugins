@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>World Builder Globe – local test</title>
+<link rel="stylesheet" href="../build/globe.css" />
+<style>
+	body { margin: 0; padding: 24px; background: #1a1d29; font-family: sans-serif; }
+	h1 { color: #e6ecfa; font-size: 20px; }
+	.wrap { max-width: 960px; margin: 0 auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+	<h1>World Builder Globe – standalone test (simulates the shortcode output)</h1>
+	<div class="wbg-globe" style="height:680px"
+		data-mode="earth" data-sea="0" data-ice="15" data-vegetation="50"
+		data-clouds="30" data-atmosphere="40" data-ocean="210" data-sun="35" data-spin="0"
+		data-color-src="../assets/earth-color.jpg"
+		data-elev-src="../assets/earth-elevation.png">
+		<div class="wbg-loading">Loading planet…</div>
+	</div>
+</div>
+<script>
+	// Any data attribute can be overridden via query string for testing,
+	// e.g. ?mode=custom&ice=60&ocean=120
+	const globe = document.querySelector('.wbg-globe');
+	for (const [k, v] of new URLSearchParams(location.search)) {
+		globe.dataset[k] = v;
+	}
+</script>
+<script src="../build/globe.js"></script>
+</body>
+</html>

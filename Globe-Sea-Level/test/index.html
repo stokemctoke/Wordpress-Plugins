@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sea Level Globe – local test</title>
+<link rel="stylesheet" href="../build/globe.css" />
+<style>
+	body { margin: 0; padding: 24px; background: #1a1d29; font-family: sans-serif; }
+	h1 { color: #e6ecfa; font-size: 20px; }
+	.wrap { max-width: 900px; margin: 0 auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+	<h1>Sea Level Globe – standalone test (simulates the shortcode output)</h1>
+	<div class="slg-globe" style="height:600px"
+		data-min="-10000" data-max="10000" data-start="0" data-step="10" data-unit="ft"
+		data-color-src="../assets/earth-color.jpg"
+		data-elev-src="../assets/earth-elevation.png">
+		<div class="slg-loading">Loading globe…</div>
+	</div>
+</div>
+<script>
+	// Allow ?start=NNN to set the initial sea level (feet) for testing.
+	const start = new URLSearchParams(location.search).get('start');
+	if (start !== null) {
+		document.querySelector('.slg-globe').dataset.start = start;
+	}
+</script>
+<script src="../build/globe.js"></script>
+</body>
+</html>
