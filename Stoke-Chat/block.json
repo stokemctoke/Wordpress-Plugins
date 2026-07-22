@@ -1,0 +1,15 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "stoke-chat/chat",
+	"title": "Stoke Chat",
+	"category": "widgets",
+	"icon": "format-chat",
+	"description": "Embed the Stoke Chat app (logged-in users only).",
+	"textdomain": "stoke-chat",
+	"supports": {
+		"html": false,
+		"multiple": false
+	},
+	"editorScript": "stoke-chat-block"
+}
