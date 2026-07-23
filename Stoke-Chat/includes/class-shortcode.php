@@ -37,8 +37,10 @@ class Shortcode {
 	}
 
 	public function render() {
+		$palette_class = 'stokechat--' . $this->settings->palette();
+
 		if ( ! is_user_logged_in() ) {
-			return '<div class="stokechat stokechat-login-required"><p>'
+			return '<div class="stokechat stokechat-login-required ' . esc_attr( $palette_class ) . '"><p>'
 				. esc_html__( 'You need to be logged in to use the chat.', 'stoke-chat' )
 				. ' <a href="' . esc_url( wp_login_url( get_permalink() ? get_permalink() : home_url( '/' ) ) ) . '">'
 				. esc_html__( 'Log in', 'stoke-chat' )
@@ -61,6 +63,7 @@ class Shortcode {
 				'maxLength'          => (int) $this->settings->get( 'message_max_length' ),
 				'canCreateRooms'     => current_user_can( Capabilities::CREATE_ROOMS ),
 				'isAdmin'            => current_user_can( 'manage_options' ),
+				'palette'            => $this->settings->palette(),
 				'smileys'            => $this->smileys->for_picker(),
 				'smileyMap'          => $this->smileys->replacement_map(),
 				'me'                 => array(
@@ -72,7 +75,7 @@ class Shortcode {
 			)
 		);
 
-		return '<div id="stokechat-app" class="stokechat" data-loading="1"><p class="stokechat-boot">'
+		return '<div id="stokechat-app" class="stokechat ' . esc_attr( $palette_class ) . '" data-loading="1"><p class="stokechat-boot">'
 			. esc_html__( 'Loading chat…', 'stoke-chat' ) . '</p></div>';
 	}
 

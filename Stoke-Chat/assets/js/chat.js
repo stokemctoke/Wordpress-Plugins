@@ -347,7 +347,7 @@
 
 		ui.smileyPicker = buildSmileyPicker();
 
-		ui.sendBtn = el( 'button', 'stokechat-btn is-primary', 'Send' );
+		ui.sendBtn = el( 'button', 'stokechat-btn is-send', 'Send' );
 		ui.sendBtn.type = 'submit';
 		ui.sendBtn.disabled = true;
 

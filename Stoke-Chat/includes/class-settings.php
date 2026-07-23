@@ -22,7 +22,31 @@ class Settings {
 			'email_throttle_min'   => 15,
 			'chat_page_url'        => '',
 			'smiley_folder'        => '',
+			'palette'              => 'stoke-mctoke',
 		);
+	}
+
+	/**
+	 * Available UI color palettes (slug => label).
+	 *
+	 * @return array<string,string>
+	 */
+	public function palettes() {
+		return array(
+			'stoke-mctoke'    => __( 'Stoke McToke (cyan)', 'stoke-chat' ),
+			'gallus-gadgets'  => __( 'Gallus Gadgets (orange)', 'stoke-chat' ),
+		);
+	}
+
+	/**
+	 * Sanitized current palette slug.
+	 */
+	public function palette() {
+		$slug = (string) $this->get( 'palette' );
+		if ( ! isset( $this->palettes()[ $slug ] ) ) {
+			return 'stoke-mctoke';
+		}
+		return $slug;
 	}
 
 	public function get( $key ) {
@@ -85,6 +109,9 @@ class Settings {
 		}
 		$folder = preg_replace( '#[^a-zA-Z0-9_\-./]#', '', $folder );
 		$out['smiley_folder'] = is_string( $folder ) ? $folder : '';
+
+		$palette = isset( $input['palette'] ) ? sanitize_key( (string) $input['palette'] ) : 'stoke-mctoke';
+		$out['palette'] = isset( $this->palettes()[ $palette ] ) ? $palette : 'stoke-mctoke';
 
 		return $out;
 	}
@@ -188,6 +215,20 @@ class Settings {
 								name="<?php echo esc_attr( self::OPTION ); ?>[email_throttle_min]"
 								value="<?php echo esc_attr( $this->get( 'email_throttle_min' ) ); ?>" class="small-text" />
 							<p class="description"><?php esc_html_e( 'At most one alert email per user per room within this window.', 'stoke-chat' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="stokechat-palette"><?php esc_html_e( 'Color palette', 'stoke-chat' ); ?></label></th>
+						<td>
+							<select id="stokechat-palette"
+								name="<?php echo esc_attr( self::OPTION ); ?>[palette]">
+								<?php foreach ( $this->palettes() as $slug => $label ) : ?>
+									<option value="<?php echo esc_attr( $slug ); ?>" <?php selected( $this->palette(), $slug ); ?>>
+										<?php echo esc_html( $label ); ?>
+									</option>
+								<?php endforeach; ?>
+							</select>
+							<p class="description"><?php esc_html_e( 'Match the chat UI to your site brand. Gallus Gadgets uses orange accents instead of cyan/blue.', 'stoke-chat' ); ?></p>
 						</td>
 					</tr>
 					<tr>

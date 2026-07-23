@@ -1,6 +1,7 @@
-/* Stoke Chat — Stoke McToke dark palette. */
+/* Stoke Chat — brand palettes via .stokechat--{slug}. Default: Stoke McToke. */
 
 .stokechat {
+	/* Stoke McToke */
 	--sc-bg: #000111;
 	--sc-bg-alt: #1a1a1f;
 	--sc-surface: #2a2d31;
@@ -12,7 +13,8 @@
 	--sc-accent-text: #000111;
 	--sc-warn: #faa307;
 	--sc-highlight: #ffff00;
-	--sc-danger: #ff5c5c;
+	--sc-success: #3ecf6a;
+	--sc-danger: #e5484d;
 	--sc-mention: color-mix(in srgb, var(--sc-warn) 28%, var(--sc-bg-alt));
 	--sc-mention-text: var(--sc-highlight);
 	--sc-radius: 0.35em;
@@ -32,6 +34,25 @@
 	font-size: var(--sc-font-size);
 	line-height: 1.45;
 	color-scheme: dark;
+}
+
+/* Gallus Gadgets — warm dark + orange accents (replaces blue/cyan buttons). */
+.stokechat.stokechat--gallus-gadgets {
+	--sc-bg: #0e0e12;
+	--sc-bg-alt: #15151b;
+	--sc-surface: #1c1c24;
+	--sc-border: #26262f;
+	--sc-text: #f2ede6;
+	--sc-muted: #9e9890;
+	--sc-subtle: #9e9890;
+	--sc-accent: #e8900a;
+	--sc-accent-text: #0e0e12;
+	--sc-warn: #f5b445;
+	--sc-highlight: #f5b445;
+	--sc-success: #3ecf6a;
+	--sc-danger: #e5484d;
+	--sc-mention: color-mix(in srgb, var(--sc-accent) 22%, var(--sc-bg-alt));
+	--sc-mention-text: var(--sc-warn);
 }
 
 .stokechat-login-required {
@@ -635,15 +656,33 @@
 	cursor: default;
 }
 
+.stokechat-btn.is-send {
+	background: var(--sc-success);
+	border-color: var(--sc-success);
+	color: #0e0e12;
+}
+
+.stokechat-btn.is-send:hover {
+	background: color-mix(in srgb, var(--sc-success) 82%, #fff);
+	border-color: color-mix(in srgb, var(--sc-success) 82%, #fff);
+	color: #0e0e12;
+}
+
+.stokechat-btn.is-send:disabled {
+	opacity: 0.45;
+	cursor: default;
+}
+
 .stokechat-btn.is-danger {
-	color: var(--sc-danger);
-	border-color: color-mix(in srgb, var(--sc-danger) 40%, var(--sc-border));
+	color: #fff;
+	background: var(--sc-danger);
+	border-color: var(--sc-danger);
 }
 
 .stokechat-btn.is-danger:hover {
 	color: #fff;
-	background: var(--sc-danger);
-	border-color: var(--sc-danger);
+	background: color-mix(in srgb, var(--sc-danger) 82%, #000);
+	border-color: color-mix(in srgb, var(--sc-danger) 82%, #000);
 }
 
 .stokechat-retry {

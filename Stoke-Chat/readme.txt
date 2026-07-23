@@ -4,7 +4,7 @@ Tags: chat, messaging, rooms, community, members
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.1.1
+Stable tag: 1.1.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,7 +19,7 @@ Stoke Chat adds a fully self-hosted chat to a single WordPress site. There is no
 * Public rooms (any logged-in user can browse and join) and private, invite-only rooms.
 * Room creators can rename rooms after creation.
 * Built-in emoji smileys with a picker; optional custom image smiley folder under wp-content.
-* Chat UI uses the Stoke McToke dark palette (cyan / orange accents on near-black).
+* Chat UI brand palettes: Stoke McToke (cyan) or Gallus Gadgets (orange accents).
 * Per-room roles — creator, moderator, member — managed by each room's creator, completely separate from WordPress roles.
 * Direct messages as private two-person rooms.
 * @username mentions with highlighting.
@@ -47,6 +47,12 @@ Stoke Chat adds a fully self-hosted chat to a single WordPress site. There is no
 3. Place `[stoke_chat]` on a page and set that page's URL under Settings → Stoke Chat.
 
 == Changelog ==
+
+= 1.1.3 =
+* Send button is green and Delete room stays red on both brand palettes.
+
+= 1.1.2 =
+* Add Gallus Gadgets color palette (orange accents); choose under Settings → Color palette.
 
 = 1.1.1 =
 * Dark Stoke McToke brand palette for the chat UI.
