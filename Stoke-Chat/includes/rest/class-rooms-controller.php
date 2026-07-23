@@ -10,7 +10,7 @@ use WP_REST_Server;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * /rooms — list, create, get, delete, join, leave.
+ * /rooms — list, create, get, update (rename), delete, join, leave, reorder.
  */
 class Rooms_Controller extends Base_Controller {
 
@@ -57,6 +57,22 @@ class Rooms_Controller extends Base_Controller {
 					'permission_callback' => array( $this, 'require_login' ),
 				),
 				array(
+					'methods'             => WP_REST_Server::EDITABLE,
+					'callback'            => array( $this, 'update_room' ),
+					'permission_callback' => array( $this, 'require_login' ),
+					'args'                => array(
+						'name' => array(
+							'type'              => 'string',
+							'required'          => true,
+							'sanitize_callback' => 'sanitize_text_field',
+							'validate_callback' => function ( $value ) {
+								$len = mb_strlen( trim( (string) $value ) );
+								return $len >= 1 && $len <= 190;
+							},
+						),
+					),
+				),
+				array(
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => array( $this, 'delete_room' ),
 					'permission_callback' => array( $this, 'require_login' ),
@@ -81,6 +97,26 @@ class Rooms_Controller extends Base_Controller {
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'leave_room' ),
 				'permission_callback' => array( $this, 'require_login' ),
+			)
+		);
+
+		register_rest_route(
+			self::REST_NS,
+			'/rooms/order',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'reorder_rooms' ),
+				'permission_callback' => array( $this, 'require_login' ),
+				'args'                => array(
+					'room_ids' => array(
+						'type'              => 'array',
+						'required'          => true,
+						'items'             => array( 'type' => 'integer' ),
+						'validate_callback' => function ( $value ) {
+							return is_array( $value );
+						},
+					),
+				),
 			)
 		);
 	}
@@ -173,6 +209,39 @@ class Rooms_Controller extends Base_Controller {
 		);
 	}
 
+	public function update_room( $request ) {
+		$result = $this->get_visible_room( (int) $request['room_id'] );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		list( $room, $member ) = $result;
+
+		$is_creator = $member && Members::ROLE_CREATOR === $member->room_role;
+		if ( ! $is_creator && ! current_user_can( 'manage_options' ) ) {
+			return $this->forbidden( __( 'Only the room creator can rename this room.', 'stoke-chat' ) );
+		}
+
+		$updated = $this->plugin->rooms->rename( $room->room_id, trim( $request['name'] ) );
+		if ( ! $updated ) {
+			return new WP_Error( 'stokechat_rename_failed', __( 'Could not rename the room.', 'stoke-chat' ), array( 'status' => 500 ) );
+		}
+
+		$member_count = $this->plugin->members->count( $updated->room_id );
+
+		return rest_ensure_response(
+			array(
+				'room_id'      => (int) $updated->room_id,
+				'name'         => $updated->name,
+				'creator_id'   => (int) $updated->creator_id,
+				'is_private'   => (bool) $updated->is_private,
+				'created_at'   => $updated->created_at,
+				'is_member'    => (bool) $member,
+				'room_role'    => $member ? $member->room_role : null,
+				'member_count' => $member_count,
+			)
+		);
+	}
+
 	public function delete_room( $request ) {
 		$result = $this->get_visible_room( (int) $request['room_id'] );
 		if ( is_wp_error( $result ) ) {
@@ -222,6 +291,21 @@ class Rooms_Controller extends Base_Controller {
 		$this->plugin->members->remove( $room->room_id, get_current_user_id() );
 
 		return rest_ensure_response( array( 'left' => true ) );
+	}
+
+	/**
+	 * Save the current user's personal room sidebar order.
+	 */
+	public function reorder_rooms( $request ) {
+		$user_id  = get_current_user_id();
+		$room_ids = array_map( 'intval', (array) $request['room_ids'] );
+		$order    = $this->plugin->rooms->set_order( $user_id, $room_ids );
+
+		return rest_ensure_response(
+			array(
+				'room_ids' => $order,
+			)
+		);
 	}
 
 	/**

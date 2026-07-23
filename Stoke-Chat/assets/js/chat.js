@@ -13,6 +13,7 @@
 
 	var MENTION_RE = /(^|\s)(@[a-zA-Z0-9_.\-]{2,60})/g;
 	var IDLE_MS    = 5 * 60 * 1000;
+	var SMILEY_RE  = buildSmileyRe();
 
 	var state = {
 		rooms: [],
@@ -22,7 +23,8 @@
 		pollTimer: 0,
 		tick: 0,
 		lastActivity: Date.now(),
-		membersOpen: false
+		membersOpen: false,
+		smileyPickerOpen: false
 	};
 
 	var ui = {}; // Populated by buildLayout().
@@ -40,6 +42,21 @@
 			node.textContent = text;
 		}
 		return node;
+	}
+
+	/**
+	 * Longest-first regex of smiley shortcodes so :-)/:smile: beat shorter overlaps.
+	 */
+	function buildSmileyRe() {
+		var map = cfg.smileyMap || {};
+		var codes = Object.keys( map ).sort( function ( a, b ) { return b.length - a.length; } );
+		if ( ! codes.length ) {
+			return null;
+		}
+		var escaped = codes.map( function ( c ) {
+			return c.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' );
+		} );
+		return new RegExp( '(' + escaped.join( '|' ) + ')', 'g' );
 	}
 
 	async function api( path, opts ) {
@@ -137,7 +154,7 @@
 	}
 
 	/**
-	 * Message text -> DOM nodes with @mention spans (all via textContent).
+	 * Message text -> DOM nodes with @mention spans and smileys (all via textContent / safe img).
 	 */
 	function contentNodes( text ) {
 		var frag = document.createDocumentFragment();
@@ -147,16 +164,51 @@
 		while ( ( match = MENTION_RE.exec( text ) ) !== null ) {
 			var start = match.index + match[1].length;
 			if ( start > last ) {
-				frag.appendChild( document.createTextNode( text.slice( last, start ) ) );
+				appendWithSmileys( frag, text.slice( last, start ) );
 			}
 			var isMe = match[2].slice( 1 ).toLowerCase() === String( cfg.me.username ).toLowerCase();
 			frag.appendChild( el( 'span', 'stokechat-mention' + ( isMe ? ' is-me' : '' ), match[2] ) );
 			last = start + match[2].length;
 		}
 		if ( last < text.length ) {
-			frag.appendChild( document.createTextNode( text.slice( last ) ) );
+			appendWithSmileys( frag, text.slice( last ) );
 		}
 		return frag;
+	}
+
+	function appendWithSmileys( frag, text ) {
+		var map = cfg.smileyMap || {};
+		if ( ! SMILEY_RE || ! text ) {
+			if ( text ) {
+				frag.appendChild( document.createTextNode( text ) );
+			}
+			return;
+		}
+		var last = 0;
+		var match;
+		SMILEY_RE.lastIndex = 0;
+		while ( ( match = SMILEY_RE.exec( text ) ) !== null ) {
+			if ( match.index > last ) {
+				frag.appendChild( document.createTextNode( text.slice( last, match.index ) ) );
+			}
+			var info = map[ match[0] ];
+			if ( info && info.type === 'image' && info.value ) {
+				var img = el( 'img', 'stokechat-smiley' );
+				img.src = info.value;
+				img.alt = match[0];
+				img.title = match[0];
+				img.loading = 'lazy';
+				frag.appendChild( img );
+			} else if ( info && info.value ) {
+				frag.appendChild( el( 'span', 'stokechat-smiley-emoji', info.value ) );
+			} else {
+				frag.appendChild( document.createTextNode( match[0] ) );
+			}
+			last = match.index + match[0].length;
+		}
+		if ( last < text.length ) {
+			frag.appendChild( document.createTextNode( text.slice( last ) ) );
+		}
 	}
 
 	/* ------------------------------------------------------------------ */
@@ -278,22 +330,38 @@
 		form.hidden = true;
 
 		ui.textarea = el( 'textarea', 'stokechat-textarea' );
-		ui.textarea.placeholder = 'Write a message… use @username to mention someone';
+		ui.textarea.placeholder = 'Write a message… use @username or :smile:';
 		ui.textarea.rows = 2;
 		ui.textarea.maxLength = cfg.maxLength;
 
 		ui.counter = el( 'span', 'stokechat-counter', '' );
+
+		ui.smileyBtn = el( 'button', 'stokechat-btn stokechat-smiley-toggle', '☺' );
+		ui.smileyBtn.type = 'button';
+		ui.smileyBtn.title = 'Insert smiley';
+		ui.smileyBtn.setAttribute( 'aria-expanded', 'false' );
+		ui.smileyBtn.addEventListener( 'click', function ( e ) {
+			e.preventDefault();
+			toggleSmileyPicker();
+		} );
+
+		ui.smileyPicker = buildSmileyPicker();
 
 		ui.sendBtn = el( 'button', 'stokechat-btn is-primary', 'Send' );
 		ui.sendBtn.type = 'submit';
 		ui.sendBtn.disabled = true;
 
 		var row = el( 'div', 'stokechat-composer-row' );
+		row.appendChild( ui.smileyBtn );
 		row.appendChild( ui.counter );
 		row.appendChild( ui.sendBtn );
 
+		var wrap = el( 'div', 'stokechat-composer-tools' );
+		wrap.appendChild( ui.smileyPicker );
+		wrap.appendChild( row );
+
 		form.appendChild( ui.textarea );
-		form.appendChild( row );
+		form.appendChild( wrap );
 
 		ui.textarea.addEventListener( 'input', updateComposer );
 		ui.textarea.addEventListener( 'keydown', function ( e ) {
@@ -301,10 +369,14 @@
 				e.preventDefault();
 				form.requestSubmit ? form.requestSubmit() : form.dispatchEvent( new Event( 'submit', { cancelable: true } ) );
 			}
+			if ( e.key === 'Escape' && state.smileyPickerOpen ) {
+				closeSmileyPicker();
+			}
 		} );
 
 		form.addEventListener( 'submit', function ( e ) {
 			e.preventDefault();
+			closeSmileyPicker();
 			var text = ui.textarea.value.trim();
 			if ( ! text || text.length > cfg.maxLength ) {
 				return;
@@ -315,7 +387,92 @@
 			ui.textarea.focus();
 		} );
 
+		document.addEventListener( 'click', function ( e ) {
+			if ( ! state.smileyPickerOpen ) {
+				return;
+			}
+			if ( ! form.contains( e.target ) ) {
+				closeSmileyPicker();
+			}
+		} );
+
 		return form;
+	}
+
+	function buildSmileyPicker() {
+		var panel = el( 'div', 'stokechat-smiley-picker' );
+		panel.hidden = true;
+		panel.setAttribute( 'role', 'listbox' );
+		panel.setAttribute( 'aria-label', 'Smileys' );
+
+		var list = cfg.smileys || [];
+		if ( ! list.length ) {
+			panel.appendChild( el( 'p', 'stokechat-empty', 'No smileys available.' ) );
+			return panel;
+		}
+
+		list.forEach( function ( s ) {
+			var btn = el( 'button', 'stokechat-smiley-option' );
+			btn.type = 'button';
+			btn.title = s.label || s.code;
+			btn.setAttribute( 'role', 'option' );
+			if ( s.type === 'image' ) {
+				var img = el( 'img', 'stokechat-smiley' );
+				img.src = s.value;
+				img.alt = s.code;
+				btn.appendChild( img );
+			} else {
+				btn.textContent = s.value;
+			}
+			btn.addEventListener( 'click', function ( e ) {
+				e.preventDefault();
+				insertSmiley( s );
+			} );
+			panel.appendChild( btn );
+		} );
+
+		return panel;
+	}
+
+	function toggleSmileyPicker() {
+		if ( state.smileyPickerOpen ) {
+			closeSmileyPicker();
+		} else {
+			state.smileyPickerOpen = true;
+			ui.smileyPicker.hidden = false;
+			ui.smileyBtn.setAttribute( 'aria-expanded', 'true' );
+		}
+	}
+
+	function closeSmileyPicker() {
+		state.smileyPickerOpen = false;
+		if ( ui.smileyPicker ) {
+			ui.smileyPicker.hidden = true;
+		}
+		if ( ui.smileyBtn ) {
+			ui.smileyBtn.setAttribute( 'aria-expanded', 'false' );
+		}
+	}
+
+	function insertSmiley( s ) {
+		var insert = ( s.type === 'image' ) ? s.code : s.value;
+		var ta = ui.textarea;
+		var start = ta.selectionStart || 0;
+		var end = ta.selectionEnd || 0;
+		var before = ta.value.slice( 0, start );
+		var after = ta.value.slice( end );
+		var needsSpace = before.length && ! /\s$/.test( before );
+		var chunk = ( needsSpace ? ' ' : '' ) + insert;
+		if ( ta.value.length + chunk.length > cfg.maxLength ) {
+			toast( 'Message is too long for that smiley.' );
+			return;
+		}
+		ta.value = before + chunk + after;
+		var caret = before.length + chunk.length;
+		ta.focus();
+		ta.setSelectionRange( caret, caret );
+		updateComposer();
+		closeSmileyPicker();
 	}
 
 	function updateComposer() {
@@ -354,7 +511,15 @@
 			return;
 		}
 		state.rooms.forEach( function ( room ) {
-			var li  = el( 'li', 'stokechat-room-item' + ( room.room_id === state.activeRoomId ? ' is-active' : '' ) );
+			var li = el( 'li', 'stokechat-room-item' + ( room.room_id === state.activeRoomId ? ' is-active' : '' ) );
+			li.dataset.roomId = String( room.room_id );
+
+			var handle = el( 'button', 'stokechat-drag-handle', '⋮⋮' );
+			handle.type = 'button';
+			handle.title = 'Drag to reorder';
+			handle.setAttribute( 'aria-label', 'Drag to reorder ' + room.name );
+			handle.draggable = true;
+
 			var btn = el( 'button', 'stokechat-room-btn' );
 			btn.type = 'button';
 
@@ -370,8 +535,92 @@
 			}
 
 			btn.addEventListener( 'click', function () { selectRoom( room.room_id ); } );
+
+			li.appendChild( handle );
 			li.appendChild( btn );
+			bindRoomDrag( li, handle );
 			ui.roomList.appendChild( li );
+		} );
+	}
+
+	var dragRoomId = 0;
+
+	function bindRoomDrag( li, handle ) {
+		handle.addEventListener( 'dragstart', function ( e ) {
+			dragRoomId = parseInt( li.dataset.roomId, 10 ) || 0;
+			li.classList.add( 'is-dragging' );
+			if ( e.dataTransfer ) {
+				e.dataTransfer.effectAllowed = 'move';
+				e.dataTransfer.setData( 'text/plain', String( dragRoomId ) );
+				try {
+					e.dataTransfer.setDragImage( li, 12, 12 );
+				} catch ( err ) { /* Older browsers. */ }
+			}
+		} );
+		handle.addEventListener( 'dragend', function () {
+			li.classList.remove( 'is-dragging' );
+			clearDropIndicators();
+			dragRoomId = 0;
+		} );
+		// Prevent the handle click from also selecting the room.
+		handle.addEventListener( 'click', function ( e ) {
+			e.preventDefault();
+			e.stopPropagation();
+		} );
+		li.addEventListener( 'dragover', function ( e ) {
+			e.preventDefault();
+			if ( ! dragRoomId || String( dragRoomId ) === li.dataset.roomId ) {
+				return;
+			}
+			if ( e.dataTransfer ) {
+				e.dataTransfer.dropEffect = 'move';
+			}
+			var rect = li.getBoundingClientRect();
+			var before = ( e.clientY - rect.top ) < rect.height / 2;
+			clearDropIndicators();
+			li.classList.add( before ? 'drop-before' : 'drop-after' );
+		} );
+		li.addEventListener( 'dragleave', function ( e ) {
+			if ( ! li.contains( e.relatedTarget ) ) {
+				li.classList.remove( 'drop-before', 'drop-after' );
+			}
+		} );
+		li.addEventListener( 'drop', function ( e ) {
+			e.preventDefault();
+			var targetId = parseInt( li.dataset.roomId, 10 );
+			var before = li.classList.contains( 'drop-before' );
+			clearDropIndicators();
+			if ( ! dragRoomId || ! targetId || dragRoomId === targetId ) {
+				return;
+			}
+			reorderRoomsLocal( dragRoomId, targetId, before );
+			persistRoomOrder();
+		} );
+	}
+
+	function clearDropIndicators() {
+		ui.roomList.querySelectorAll( '.drop-before, .drop-after' ).forEach( function ( node ) {
+			node.classList.remove( 'drop-before', 'drop-after' );
+		} );
+	}
+
+	function reorderRoomsLocal( fromId, toId, before ) {
+		var fromIdx = state.rooms.findIndex( function ( r ) { return r.room_id === fromId; } );
+		var toIdx   = state.rooms.findIndex( function ( r ) { return r.room_id === toId; } );
+		if ( fromIdx < 0 || toIdx < 0 ) {
+			return;
+		}
+		var moved = state.rooms.splice( fromIdx, 1 )[0];
+		toIdx = state.rooms.findIndex( function ( r ) { return r.room_id === toId; } );
+		var insertAt = before ? toIdx : toIdx + 1;
+		state.rooms.splice( insertAt, 0, moved );
+		renderRoomList();
+	}
+
+	function persistRoomOrder() {
+		var ids = state.rooms.map( function ( r ) { return r.room_id; } );
+		api( '/rooms/order', { method: 'POST', body: { room_ids: ids } } ).catch( function ( err ) {
+			handleError( err );
 		} );
 	}
 
@@ -417,6 +666,13 @@
 			membersBtn.addEventListener( 'click', toggleMembers );
 			ui.roomActions.appendChild( membersBtn );
 
+			if ( room.room_role === 'creator' || cfg.isAdmin ) {
+				var renameBtn = el( 'button', 'stokechat-btn', 'Rename' );
+				renameBtn.type = 'button';
+				renameBtn.addEventListener( 'click', function () { beginRename( room ); } );
+				ui.roomActions.appendChild( renameBtn );
+			}
+
 			if ( room.room_role !== 'creator' ) {
 				var leaveBtn = el( 'button', 'stokechat-btn', 'Leave' );
 				leaveBtn.type = 'button';
@@ -454,6 +710,62 @@
 				ui.roomActions.appendChild( delBtn );
 			}
 		}
+	}
+
+	function beginRename( room ) {
+		var input = el( 'input', 'stokechat-input stokechat-rename-input' );
+		input.type = 'text';
+		input.value = room.name;
+		input.maxLength = 190;
+		input.setAttribute( 'aria-label', 'Room name' );
+
+		ui.roomTitle.textContent = '';
+		ui.roomTitle.appendChild( input );
+		input.focus();
+		input.select();
+
+		var saving = false;
+		var cancelled = false;
+
+		async function save() {
+			if ( saving || cancelled ) {
+				return;
+			}
+			var name = input.value.trim();
+			if ( ! name || name === room.name ) {
+				renderRoomHead();
+				return;
+			}
+			saving = true;
+			input.disabled = true;
+			try {
+				var updated = await api( '/rooms/' + room.room_id, {
+					method: 'POST',
+					body: { name: name }
+				} );
+				room.name = updated.name;
+				renderRoomList();
+				renderRoomHead();
+				toast( 'Room renamed.' );
+			} catch ( err ) {
+				handleError( err );
+				renderRoomHead();
+			}
+		}
+
+		input.addEventListener( 'keydown', function ( e ) {
+			if ( e.key === 'Enter' ) {
+				e.preventDefault();
+				save();
+			} else if ( e.key === 'Escape' ) {
+				e.preventDefault();
+				cancelled = true;
+				renderRoomHead();
+			}
+		} );
+		input.addEventListener( 'blur', function () {
+			setTimeout( save, 100 );
+		} );
 	}
 
 	function renderJoinBar( room ) {

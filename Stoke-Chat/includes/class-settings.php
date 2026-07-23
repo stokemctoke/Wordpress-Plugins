@@ -12,15 +12,16 @@ class Settings {
 
 	public function defaults() {
 		return array(
-			'create_roles'       => array_keys( wp_roles()->roles ),
-			'poll_interval'      => 5,
+			'create_roles'         => array_keys( wp_roles()->roles ),
+			'poll_interval'        => 5,
 			'poll_interval_hidden' => 60,
-			'message_max_length' => 2000,
-			'messages_per_page'  => 50,
-			'emails_enabled'     => true,
-			'away_threshold_min' => 5,
-			'email_throttle_min' => 15,
-			'chat_page_url'      => '',
+			'message_max_length'   => 2000,
+			'messages_per_page'    => 50,
+			'emails_enabled'       => true,
+			'away_threshold_min'   => 5,
+			'email_throttle_min'   => 15,
+			'chat_page_url'        => '',
+			'smiley_folder'        => '',
 		);
 	}
 
@@ -75,6 +76,15 @@ class Settings {
 		$out['away_threshold_min']   = max( 1, min( 1440, (int) ( $input['away_threshold_min'] ?? $defaults['away_threshold_min'] ) ) );
 		$out['email_throttle_min']   = max( 1, min( 1440, (int) ( $input['email_throttle_min'] ?? $defaults['email_throttle_min'] ) ) );
 		$out['chat_page_url']        = esc_url_raw( $input['chat_page_url'] ?? '' );
+
+		$folder = isset( $input['smiley_folder'] ) ? (string) $input['smiley_folder'] : '';
+		$folder = str_replace( '\\', '/', $folder );
+		$folder = trim( $folder, '/' );
+		if ( false !== strpos( $folder, '..' ) ) {
+			$folder = '';
+		}
+		$folder = preg_replace( '#[^a-zA-Z0-9_\-./]#', '', $folder );
+		$out['smiley_folder'] = is_string( $folder ) ? $folder : '';
 
 		return $out;
 	}
@@ -188,6 +198,17 @@ class Settings {
 								value="<?php echo esc_attr( $this->get( 'chat_page_url' ) ); ?>"
 								placeholder="<?php echo esc_attr( home_url( '/chat/' ) ); ?>" />
 							<p class="description"><?php esc_html_e( 'The page containing the [stoke_chat] shortcode; used for links in alert emails.', 'stoke-chat' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="stokechat-smileys"><?php esc_html_e( 'Custom smiley folder', 'stoke-chat' ); ?></label></th>
+						<td>
+							<input id="stokechat-smileys" type="text" class="regular-text"
+								name="<?php echo esc_attr( self::OPTION ); ?>[smiley_folder]"
+								value="<?php echo esc_attr( $this->get( 'smiley_folder' ) ); ?>"
+								placeholder="uploads/stoke-chat-smileys" />
+							<p class="description"><?php esc_html_e( 'Path relative to wp-content (e.g. uploads/stoke-chat-smileys). PNG, GIF, JPG, SVG, and WebP files become :filename: smileys. Built-in emoji smileys are always available.', 'stoke-chat' ); ?></p>
+							<p class="description"><?php echo esc_html( 'Full path: ' . trailingslashit( WP_CONTENT_DIR ) . ( $this->get( 'smiley_folder' ) ?: '…' ) ); ?></p>
 						</td>
 					</tr>
 				</table>

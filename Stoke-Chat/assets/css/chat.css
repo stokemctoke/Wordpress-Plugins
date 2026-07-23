@@ -1,47 +1,46 @@
-/* Stoke Chat frontend styles. */
+/* Stoke Chat — Stoke McToke dark palette. */
 
 .stokechat {
-	--sc-bg: #ffffff;
-	--sc-bg-alt: #f4f5f7;
-	--sc-border: #dcdfe4;
-	--sc-text: #1f2328;
-	--sc-muted: #6b7280;
-	--sc-accent: #2563eb;
-	--sc-accent-text: #ffffff;
-	--sc-danger: #dc2626;
-	--sc-mention: #fef3c7;
-	--sc-mention-text: #92400e;
+	--sc-bg: #000111;
+	--sc-bg-alt: #1a1a1f;
+	--sc-surface: #2a2d31;
+	--sc-border: #2a2d31;
+	--sc-text: #f4f6f8;
+	--sc-muted: #9ca3af;
+	--sc-subtle: #d1d5db;
+	--sc-accent: #00ffff;
+	--sc-accent-text: #000111;
+	--sc-warn: #faa307;
+	--sc-highlight: #ffff00;
+	--sc-danger: #ff5c5c;
+	--sc-mention: color-mix(in srgb, var(--sc-warn) 28%, var(--sc-bg-alt));
+	--sc-mention-text: var(--sc-highlight);
+	--sc-radius: 0.35em;
+	--sc-font: inherit;
+	--sc-font-size: 1em;
 
 	display: flex;
 	position: relative;
 	height: 640px;
 	max-height: 80vh;
 	border: 1px solid var(--sc-border);
-	border-radius: 10px;
+	border-radius: var(--sc-radius);
 	overflow: hidden;
 	background: var(--sc-bg);
 	color: var(--sc-text);
-	font-size: 15px;
+	font-family: var(--sc-font);
+	font-size: var(--sc-font-size);
 	line-height: 1.45;
-}
-
-@media (prefers-color-scheme: dark) {
-	.stokechat {
-		--sc-bg: #16181d;
-		--sc-bg-alt: #1f2229;
-		--sc-border: #33373f;
-		--sc-text: #e6e8eb;
-		--sc-muted: #9aa1ab;
-		--sc-mention: #4a3a10;
-		--sc-mention-text: #fbd97a;
-	}
+	color-scheme: dark;
 }
 
 .stokechat-login-required {
 	padding: 1.5em;
-	border: 1px solid #dcdfe4;
-	border-radius: 10px;
+	border: 1px solid var(--sc-border);
+	border-radius: var(--sc-radius);
 	text-align: center;
+	background: var(--sc-bg);
+	color: var(--sc-text);
 }
 
 .stokechat-boot {
@@ -71,8 +70,10 @@
 .stokechat h2.stokechat-title,
 .stokechat h2.stokechat-room-title {
 	margin: 0;
-	font-size: 15px;
+	font-size: 1em;
 	font-weight: 700;
+	font-family: inherit;
+	color: inherit;
 }
 
 .stokechat-room-list {
@@ -85,16 +86,75 @@
 
 .stokechat-room-item {
 	margin: 0 0 2px;
+	display: flex;
+	align-items: stretch;
+	gap: 2px;
+	border-radius: var(--sc-radius);
+	position: relative;
+}
+
+.stokechat-room-item.is-dragging {
+	opacity: 0.45;
+}
+
+.stokechat-room-item.drop-before::before,
+.stokechat-room-item.drop-after::after {
+	content: '';
+	position: absolute;
+	left: 4px;
+	right: 4px;
+	height: 2px;
+	background: var(--sc-accent);
+	border-radius: 1px;
+	pointer-events: none;
+	z-index: 1;
+}
+
+.stokechat-room-item.drop-before::before {
+	top: -1px;
+}
+
+.stokechat-room-item.drop-after::after {
+	bottom: -1px;
+}
+
+.stokechat-drag-handle {
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.4em;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--sc-muted);
+	cursor: grab;
+	user-select: none;
+	font: inherit;
+	font-size: 11px;
+	letter-spacing: -0.12em;
+	opacity: 0.55;
+}
+
+.stokechat-room-item:hover .stokechat-drag-handle,
+.stokechat-room-item.is-active .stokechat-drag-handle {
+	opacity: 1;
+}
+
+.stokechat-room-item.is-dragging .stokechat-drag-handle {
+	cursor: grabbing;
 }
 
 .stokechat-room-btn {
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	width: 100%;
-	padding: 8px 10px;
+	flex: 1;
+	min-width: 0;
+	padding: 8px 10px 8px 4px;
 	border: 0;
-	border-radius: 6px;
+	border-radius: var(--sc-radius);
 	background: transparent;
 	color: inherit;
 	cursor: pointer;
@@ -103,11 +163,15 @@
 }
 
 .stokechat-room-btn:hover {
-	background: var(--sc-border);
+	background: var(--sc-surface);
 }
 
 .stokechat-room-item.is-active .stokechat-room-btn {
 	background: var(--sc-accent);
+	color: var(--sc-accent-text);
+}
+
+.stokechat-room-item.is-active .stokechat-drag-handle {
 	color: var(--sc-accent-text);
 }
 
@@ -120,14 +184,20 @@
 
 .stokechat-lock {
 	font-size: 12px;
+	color: var(--sc-warn);
+	filter: none;
+}
+
+.stokechat-room-item.is-active .stokechat-lock {
+	color: var(--sc-accent-text);
 }
 
 .stokechat-badge {
 	min-width: 20px;
 	padding: 1px 6px;
 	border-radius: 999px;
-	background: var(--sc-danger);
-	color: #fff;
+	background: var(--sc-warn);
+	color: var(--sc-accent-text);
 	font-size: 11px;
 	font-weight: 700;
 	text-align: center;
@@ -162,6 +232,7 @@
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
+	background: var(--sc-bg);
 }
 
 .stokechat-room-head {
@@ -181,6 +252,12 @@
 .stokechat-room-actions {
 	display: flex;
 	gap: 6px;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}
+
+.stokechat-rename-input {
+	max-width: 220px;
 }
 
 /* Messages */
@@ -217,19 +294,21 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	background: var(--sc-border);
+	background: var(--sc-surface);
 	color: var(--sc-muted);
 }
 
 .stokechat-msg-body {
 	background: var(--sc-bg-alt);
-	border-radius: 10px;
+	border: 1px solid var(--sc-border);
+	border-radius: var(--sc-radius);
 	padding: 8px 12px;
 	min-width: 0;
 }
 
 .stokechat-msg.is-mine .stokechat-msg-body {
-	background: color-mix(in srgb, var(--sc-accent) 12%, var(--sc-bg));
+	background: color-mix(in srgb, var(--sc-accent) 12%, var(--sc-bg-alt));
+	border-color: color-mix(in srgb, var(--sc-accent) 35%, var(--sc-border));
 }
 
 .stokechat-msg-meta {
@@ -240,7 +319,7 @@
 }
 
 .stokechat-msg-author {
-	font-size: 13px;
+	font-size: 0.9em;
 }
 
 .stokechat-msg-time {
@@ -284,7 +363,94 @@
 }
 
 .stokechat-mention.is-me {
-	outline: 1px solid var(--sc-mention-text);
+	outline: 1px solid var(--sc-warn);
+}
+
+.stokechat-room-head,
+.stokechat-composer,
+.stokechat-join-bar {
+	background: var(--sc-bg);
+}
+
+.stokechat-smiley-toggle:hover {
+	border-color: var(--sc-warn);
+	color: var(--sc-warn);
+}
+
+/* Keep theme form styles from bleaching the dark UI. */
+.stokechat input[type='text'],
+.stokechat input[type='search'],
+.stokechat textarea,
+.stokechat select,
+.stokechat button {
+	color: inherit;
+}
+
+/* Smileys */
+
+.stokechat-smiley {
+	display: inline-block;
+	width: 1.35em;
+	height: 1.35em;
+	vertical-align: -0.25em;
+	object-fit: contain;
+}
+
+.stokechat-smiley-emoji {
+	font-style: normal;
+}
+
+.stokechat-composer-tools {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	position: relative;
+}
+
+.stokechat-smiley-picker {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(2.1em, 1fr));
+	gap: 4px;
+	max-height: 9.5em;
+	overflow-y: auto;
+	padding: 8px;
+	border: 1px solid var(--sc-border);
+	border-radius: var(--sc-radius);
+	background: var(--sc-bg-alt);
+}
+
+.stokechat-smiley-option {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.1em;
+	height: 2.1em;
+	padding: 0;
+	border: 0;
+	border-radius: var(--sc-radius);
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+	font-size: 1.25em;
+	line-height: 1;
+}
+
+.stokechat-smiley-option:hover,
+.stokechat-smiley-option:focus {
+	background: var(--sc-surface);
+	outline: 1px solid var(--sc-accent);
+}
+
+.stokechat-smiley-option .stokechat-smiley {
+	width: 1.25em;
+	height: 1.25em;
+}
+
+.stokechat-smiley-toggle {
+	margin-right: auto;
+	font-size: 1.15em;
+	line-height: 1;
+	min-width: 2.2em;
 }
 
 /* Join bar */
@@ -314,12 +480,25 @@
 	width: 100%;
 	resize: none;
 	border: 1px solid var(--sc-border);
-	border-radius: 8px;
+	border-radius: var(--sc-radius);
 	padding: 8px 10px;
 	font: inherit;
-	background: var(--sc-bg);
+	background: var(--sc-bg-alt);
 	color: var(--sc-text);
 	box-sizing: border-box;
+	caret-color: var(--sc-accent);
+}
+
+.stokechat-textarea:focus,
+.stokechat-input:focus {
+	outline: 1px solid var(--sc-accent);
+	border-color: var(--sc-accent);
+}
+
+.stokechat-textarea::placeholder,
+.stokechat-input::placeholder {
+	color: var(--sc-muted);
+	opacity: 1;
 }
 
 .stokechat-composer-row {
@@ -376,8 +555,8 @@
 	font-size: 11px;
 	padding: 1px 7px;
 	border-radius: 999px;
-	background: var(--sc-border);
-	color: var(--sc-muted);
+	background: var(--sc-surface);
+	color: var(--sc-subtle);
 }
 
 .stokechat-role-tag.is-creator {
@@ -386,12 +565,16 @@
 }
 
 .stokechat-role-tag.is-moderator {
-	background: color-mix(in srgb, var(--sc-accent) 25%, var(--sc-bg));
-	color: var(--sc-text);
+	background: color-mix(in srgb, var(--sc-warn) 35%, var(--sc-bg-alt));
+	color: var(--sc-warn);
 }
 
 .stokechat-role-select {
 	font-size: 12px;
+	background: var(--sc-bg);
+	color: var(--sc-text);
+	border: 1px solid var(--sc-border);
+	border-radius: var(--sc-radius);
 }
 
 .stokechat-invite-results {
@@ -409,29 +592,30 @@
 	color: inherit;
 	cursor: pointer;
 	padding: 5px 6px;
-	border-radius: 5px;
+	border-radius: var(--sc-radius);
 	font: inherit;
 }
 
 .stokechat-invite-btn:hover {
-	background: var(--sc-border);
+	background: var(--sc-surface);
 }
 
 /* Buttons / inputs / toasts */
 
 .stokechat-btn {
 	border: 1px solid var(--sc-border);
-	background: var(--sc-bg);
+	background: var(--sc-surface);
 	color: var(--sc-text);
-	border-radius: 6px;
+	border-radius: var(--sc-radius);
 	padding: 5px 11px;
 	cursor: pointer;
 	font: inherit;
-	font-size: 13px;
+	font-size: 0.9em;
 }
 
 .stokechat-btn:hover {
-	background: var(--sc-bg-alt);
+	border-color: var(--sc-accent);
+	color: var(--sc-accent);
 }
 
 .stokechat-btn.is-primary {
@@ -440,13 +624,26 @@
 	color: var(--sc-accent-text);
 }
 
+.stokechat-btn.is-primary:hover {
+	background: color-mix(in srgb, var(--sc-accent) 80%, #fff);
+	border-color: color-mix(in srgb, var(--sc-accent) 80%, #fff);
+	color: var(--sc-accent-text);
+}
+
 .stokechat-btn.is-primary:disabled {
-	opacity: 0.5;
+	opacity: 0.45;
 	cursor: default;
 }
 
 .stokechat-btn.is-danger {
 	color: var(--sc-danger);
+	border-color: color-mix(in srgb, var(--sc-danger) 40%, var(--sc-border));
+}
+
+.stokechat-btn.is-danger:hover {
+	color: #fff;
+	background: var(--sc-danger);
+	border-color: var(--sc-danger);
 }
 
 .stokechat-retry {
@@ -455,18 +652,19 @@
 
 .stokechat-input {
 	border: 1px solid var(--sc-border);
-	border-radius: 6px;
+	border-radius: var(--sc-radius);
 	padding: 6px 9px;
 	font: inherit;
 	width: 100%;
 	box-sizing: border-box;
 	background: var(--sc-bg);
 	color: var(--sc-text);
+	caret-color: var(--sc-accent);
 }
 
 .stokechat-checkbox {
 	font-size: 13px;
-	color: var(--sc-muted);
+	color: var(--sc-subtle);
 }
 
 .stokechat-toasts {
@@ -482,12 +680,13 @@
 }
 
 .stokechat-toast {
-	background: var(--sc-text);
-	color: var(--sc-bg);
-	border-radius: 8px;
+	background: var(--sc-surface);
+	color: var(--sc-text);
+	border: 1px solid var(--sc-accent);
+	border-radius: var(--sc-radius);
 	padding: 8px 14px;
 	font-size: 13px;
-	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
 	transition: opacity 0.4s;
 }
 

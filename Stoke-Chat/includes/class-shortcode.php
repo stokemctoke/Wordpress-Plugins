@@ -11,8 +11,12 @@ class Shortcode {
 	/** @var Settings */
 	private $settings;
 
-	public function __construct( Settings $settings ) {
+	/** @var Smileys */
+	private $smileys;
+
+	public function __construct( Settings $settings, Smileys $smileys ) {
 		$this->settings = $settings;
+		$this->smileys  = $smileys;
 	}
 
 	public function register() {
@@ -57,6 +61,8 @@ class Shortcode {
 				'maxLength'          => (int) $this->settings->get( 'message_max_length' ),
 				'canCreateRooms'     => current_user_can( Capabilities::CREATE_ROOMS ),
 				'isAdmin'            => current_user_can( 'manage_options' ),
+				'smileys'            => $this->smileys->for_picker(),
+				'smileyMap'          => $this->smileys->replacement_map(),
 				'me'                 => array(
 					'id'           => (int) $user->ID,
 					'username'     => $user->user_login,

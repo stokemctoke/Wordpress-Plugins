@@ -3,7 +3,7 @@
  * Plugin Name:       Stoke Chat
  * Plugin URI:        https://github.com/stokemctoke/Wordpress-Plugins
  * Description:       Self-hosted chat rooms for logged-in users. Public and private rooms, per-room roles, @mentions, and away email alerts.
- * Version:           1.0.0
+ * Version:           1.1.1
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Stoke McToke
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'STOKECHAT_VERSION', '1.0.0' );
+define( 'STOKECHAT_VERSION', '1.1.1' );
 define( 'STOKECHAT_DB_VERSION', '1' );
 define( 'STOKECHAT_PLUGIN_FILE', __FILE__ );
 define( 'STOKECHAT_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );

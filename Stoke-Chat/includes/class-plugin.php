@@ -35,6 +35,9 @@ class Plugin {
 	/** @var Mailer */
 	public $mailer;
 
+	/** @var Smileys */
+	public $smileys;
+
 	/** @var Shortcode */
 	public $shortcode;
 
@@ -57,7 +60,8 @@ class Plugin {
 		$this->rooms        = new Rooms( $this->members );
 		$this->mentions     = new Mentions( $this->members );
 		$this->mailer       = new Mailer( $this->settings, $this->presence, $this->members, $this->rooms, $this->mentions );
-		$this->shortcode    = new Shortcode( $this->settings );
+		$this->smileys      = new Smileys( $this->settings );
+		$this->shortcode    = new Shortcode( $this->settings, $this->smileys );
 		$this->user_hooks   = new User_Hooks( $this->rooms, $this->members );
 
 		Schema::maybe_upgrade();

@@ -8,6 +8,9 @@ defined( 'ABSPATH' ) || exit;
  */
 class Rooms {
 
+	/** User meta key for personal room sidebar order (array of room_id ints). */
+	const ORDER_META = 'stokechat_room_order';
+
 	/** @var Members */
 	private $members;
 
@@ -48,6 +51,29 @@ class Rooms {
 				$room_id
 			)
 		);
+	}
+
+	/**
+	 * Rename an existing room.
+	 *
+	 * @return object|null Updated room row, or null on failure.
+	 */
+	public function rename( $room_id, $name ) {
+		global $wpdb;
+
+		$updated = $wpdb->update(
+			Schema::rooms_table(),
+			array( 'name' => $name ),
+			array( 'room_id' => (int) $room_id ),
+			array( '%s' ),
+			array( '%d' )
+		);
+
+		if ( false === $updated ) {
+			return null;
+		}
+
+		return $this->get( $room_id );
 	}
 
 	/**
@@ -99,17 +125,73 @@ class Rooms {
 	/**
 	 * Rooms visible to a user: all public rooms plus their private memberships,
 	 * with membership info, member_count, last_message_id, and unread_count.
+	 * Sorted by the user's saved sidebar order when set; otherwise by name.
 	 *
 	 * @return object[]
 	 */
 	public function get_visible_for_user( $user_id ) {
+		return $this->apply_user_order( $this->get_visible_for_user_unordered( $user_id ), $user_id );
+	}
+
+	/**
+	 * @return int[]
+	 */
+	public function get_order( $user_id ) {
+		$raw = get_user_meta( (int) $user_id, self::ORDER_META, true );
+		if ( ! is_array( $raw ) ) {
+			return array();
+		}
+		return array_values( array_filter( array_map( 'intval', $raw ) ) );
+	}
+
+	/**
+	 * Persist a user's room sidebar order. Only IDs currently visible to them are kept.
+	 *
+	 * @param int   $user_id
+	 * @param int[] $room_ids
+	 * @return int[] Saved order.
+	 */
+	public function set_order( $user_id, array $room_ids ) {
+		$user_id     = (int) $user_id;
+		$visible     = $this->get_visible_for_user_unordered( $user_id );
+		$visible_ids = array();
+		foreach ( $visible as $row ) {
+			$visible_ids[ (int) $row->room_id ] = true;
+		}
+
+		$order = array();
+		foreach ( $room_ids as $id ) {
+			$id = (int) $id;
+			if ( $id && isset( $visible_ids[ $id ] ) && ! in_array( $id, $order, true ) ) {
+				$order[] = $id;
+			}
+		}
+
+		// Append any visible rooms the client omitted (e.g. newly created).
+		foreach ( $visible as $row ) {
+			$id = (int) $row->room_id;
+			if ( ! in_array( $id, $order, true ) ) {
+				$order[] = $id;
+			}
+		}
+
+		update_user_meta( $user_id, self::ORDER_META, $order );
+		return $order;
+	}
+
+	/**
+	 * Visible rooms sorted alphabetically (no personal order applied).
+	 *
+	 * @return object[]
+	 */
+	private function get_visible_for_user_unordered( $user_id ) {
 		global $wpdb;
 
 		$rooms    = Schema::rooms_table();
 		$members  = Schema::members_table();
 		$messages = Schema::messages_table();
 
-		return $wpdb->get_results(
+		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT r.room_id, r.name, r.creator_id, r.is_private, r.created_at,
 					m.room_role, m.last_read_message_id,
@@ -126,5 +208,39 @@ class Rooms {
 				$user_id
 			)
 		);
+
+		return is_array( $rows ) ? $rows : array();
+	}
+
+	/**
+	 * @param object[] $rows
+	 * @param int      $user_id
+	 * @return object[]
+	 */
+	private function apply_user_order( array $rows, $user_id ) {
+		$order = $this->get_order( $user_id );
+		if ( ! $order ) {
+			return $rows;
+		}
+
+		$by_id = array();
+		foreach ( $rows as $row ) {
+			$by_id[ (int) $row->room_id ] = $row;
+		}
+
+		$sorted = array();
+		foreach ( $order as $id ) {
+			if ( isset( $by_id[ $id ] ) ) {
+				$sorted[] = $by_id[ $id ];
+				unset( $by_id[ $id ] );
+			}
+		}
+
+		// Unordered leftovers keep alphabetical order from the SQL query.
+		foreach ( $by_id as $row ) {
+			$sorted[] = $row;
+		}
+
+		return $sorted;
 	}
 }

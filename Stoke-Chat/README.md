@@ -6,6 +6,10 @@ Self-hosted chat rooms for a single WordPress site. No external services, no bui
 
 - **Logged-in users only.** No public or unregistered access anywhere — the UI shows a login prompt and every REST route requires authentication.
 - **Public and private rooms.** Any logged-in user can browse and join public rooms; private rooms are invite-only and invisible to non-members (the API returns 404, not 403, so their existence never leaks).
+- **Rename rooms.** Creators (and site admins) can change a room’s name after creation.
+- **Reorder rooms.** Drag rooms in the sidebar to set a personal order (saved per user).
+- **Smileys.** Built-in emoji shortcodes (`:smile:`, `:wink:`, `:)`, …) plus a picker in the composer. Optionally point **Settings → Stoke Chat → Custom smiley folder** at a folder under `wp-content` (e.g. `uploads/stoke-chat-smileys`); image files there become `:filename:` smileys.
+- **Dark brand UI.** Chat uses the Stoke McToke palette (near-black surfaces, cyan accents, orange/yellow highlights) so it matches the site.
 - **Per-room roles.** Each room has a creator, optional moderators, and members — managed by the room creator, completely separate from WordPress roles. Moderators can delete any message, invite, and kick.
 - **Direct messages.** A DM is simply a private two-person room; no separate messaging system to maintain.
 - **@mentions with email alerts.** `@username` mentions are highlighted, and mentioned users (or DM recipients) get an email via `wp_mail` when they've been inactive past a configurable threshold — throttled per user/room, with a per-user opt-out on the profile page.

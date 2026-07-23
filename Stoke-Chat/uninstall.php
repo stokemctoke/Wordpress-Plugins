@@ -16,6 +16,7 @@ delete_option( 'stokechat_db_version' );
 
 delete_metadata( 'user', 0, 'stokechat_last_active', '', true );
 delete_metadata( 'user', 0, 'stokechat_email_optout', '', true );
+delete_metadata( 'user', 0, 'stokechat_room_order', '', true );
 
 if ( function_exists( 'wp_roles' ) ) {
 	foreach ( wp_roles()->role_objects as $role ) {
