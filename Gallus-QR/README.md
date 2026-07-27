@@ -24,7 +24,7 @@ Free, self-hosted QR code studio for WordPress. Design styled codes, track scans
 
 ## Install
 
-1. Download the release zip (`gallus-qr-2.0.2.zip`), or zip the inner `gallus-qr/` folder yourself (**do not** include `node_modules` / `vendor` if you recreate a local env).
+1. Zip this `Gallus-QR/` folder (or download a release zip). Do **not** include `node_modules` / `vendor` if you recreate a local env.
 2. WordPress → **Plugins → Add New → Upload Plugin** → install → activate.
 3. Keep Permalinks off **Plain** so `/qr/{slug}` routes correctly.
 4. Open **Gallus QR** in the admin sidebar. Optionally set **Settings → Gallus QR → Extra role with access** to share the tool with Subscribers (each gets their own library).
@@ -48,7 +48,7 @@ Runtime needs only the plugin PHP, `assets/`, `block/`, `languages/`, `readme.tx
 ## Plugin layout
 
 ```
-gallus-qr/
+Gallus-QR/
 ├── gallus-qr.php          # bootstrap, activation, constants
 ├── uninstall.php
 ├── readme.txt             # WordPress.org-style readme
@@ -73,7 +73,7 @@ No external API calls. Scan rows store a salted SHA-256 of the visitor IP (never
 Optional — the shipped plugin has no build step.
 
 ```bash
-cd Gallus-QR/gallus-qr
+cd Gallus-QR
 npm install          # @wordpress/env only
 composer install     # PHPUnit for tests
 npm run env:start    # http://localhost:8888  (admin / password)
@@ -98,4 +98,4 @@ These create local `node_modules/` and `vendor/` — keep them gitignored; never
 - **2.0.1** — Roadmap + optional donation touchpoints.
 - **2.0.0** — Full studio: payload types, lifecycle, A/B, analytics, block, REST, settings.
 
-See `gallus-qr/readme.txt` for the full WordPress changelog.
+See `readme.txt` for the full WordPress changelog.
