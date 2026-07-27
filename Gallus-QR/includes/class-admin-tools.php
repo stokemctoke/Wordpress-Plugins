@@ -116,7 +116,9 @@ class Gallus_QR_Admin_Tools {
 		);
 		$row_num = 0;
 
-		while ( false !== ( $cols = fgetcsv( $handle ) ) ) {
+		// The separator/enclosure/escape args are explicit: fgetcsv()'s default
+		// escape is deprecated in PHP 8.4.
+		while ( false !== ( $cols = fgetcsv( $handle, 0, ',', '"', '\\' ) ) ) {
 			$row_num++;
 
 			if ( $row_num > self::IMPORT_LIMIT + 1 ) {

@@ -97,8 +97,10 @@ class Gallus_QR_Database {
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			name varchar(100) NOT NULL,
 			design longtext NOT NULL,
+			user_id bigint(20) unsigned NOT NULL DEFAULT 0,
 			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			PRIMARY KEY  (id)
+			PRIMARY KEY  (id),
+			KEY user_id (user_id)
 		) {$charset_collate};";
 
 		dbDelta( $sql_codes );
@@ -144,24 +146,44 @@ class Gallus_QR_Database {
 		if ( (int) $installed < 4 ) {
 			// Existing codes predate ownership — assign them to the first admin
 			// so they stay with site operators, not every new Subscriber.
-			$codes   = $this->codes_table();
-			$admins = get_users(
-				array(
-					'role'    => 'administrator',
-					'number'  => 1,
-					'fields'  => 'ID',
-					'orderby' => 'ID',
-					'order'   => 'ASC',
-				)
-			);
-			$owner_id = ! empty( $admins ) ? (int) $admins[0] : 0;
+			$codes = $this->codes_table();
 			$wpdb->query(
 				$wpdb->prepare(
 					"UPDATE {$codes} SET user_id = %d WHERE user_id = 0",
-					$owner_id
+					$this->first_admin_id()
 				)
 			);
 		}
+
+		if ( (int) $installed < 5 ) {
+			// Presets gained ownership in v5 — same reasoning as codes above.
+			$presets = $this->presets_table();
+			$wpdb->query(
+				$wpdb->prepare(
+					"UPDATE {$presets} SET user_id = %d WHERE user_id = 0",
+					$this->first_admin_id()
+				)
+			);
+		}
+	}
+
+	/**
+	 * The lowest-numbered administrator, used to adopt pre-ownership rows.
+	 *
+	 * @return int 0 when the site somehow has no administrator.
+	 */
+	private function first_admin_id() {
+		$admins = get_users(
+			array(
+				'role'    => 'administrator',
+				'number'  => 1,
+				'fields'  => 'ID',
+				'orderby' => 'ID',
+				'order'   => 'ASC',
+			)
+		);
+
+		return ! empty( $admins ) ? (int) $admins[0] : 0;
 	}
 
 	/**
@@ -517,32 +539,67 @@ class Gallus_QR_Database {
 
 	// --- Design presets -----------------------------------------------------------
 
-	/** @return array All presets, newest first. */
-	public function get_presets() {
+	/**
+	 * Design presets, newest first.
+	 *
+	 * @param int|null $owner_id null = every preset (admins); otherwise only
+	 *                           that user's.
+	 * @return array
+	 */
+	public function get_presets( $owner_id = null ) {
 		global $wpdb;
+		$presets = $this->presets_table();
+		$owner   = $this->owner_sql( $owner_id );
+
+		if ( '' === $owner ) {
+			return $wpdb->get_results( "SELECT * FROM {$presets} ORDER BY created_at DESC" );
+		}
+
 		return $wpdb->get_results(
-			"SELECT * FROM {$this->presets_table()} ORDER BY created_at DESC"
+			"SELECT * FROM {$presets} WHERE 1=1{$owner} ORDER BY created_at DESC"
+		);
+	}
+
+	/**
+	 * Look up a preset by its ID (so callers can check ownership before acting).
+	 *
+	 * @param int $id
+	 * @return object|null
+	 */
+	public function get_preset_by_id( $id ) {
+		global $wpdb;
+		return $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM {$this->presets_table()} WHERE id = %d",
+				$id
+			)
 		);
 	}
 
 	/**
 	 * Save a design preset.
 	 *
-	 * @param string $name
-	 * @param string $design Normalised design JSON.
+	 * @param string   $name
+	 * @param string   $design  Normalised design JSON.
+	 * @param int|null $user_id Owner; defaults to the current user.
 	 * @return int|false New preset ID, or false.
 	 */
-	public function insert_preset( $name, $design ) {
+	public function insert_preset( $name, $design, $user_id = null ) {
 		global $wpdb;
+
+		if ( null === $user_id ) {
+			$user_id = get_current_user_id();
+		}
 
 		$ok = $wpdb->insert(
 			$this->presets_table(),
 			array(
 				'name'       => $name,
 				'design'     => $design,
+				'user_id'    => (int) $user_id,
 				'created_at' => current_time( 'mysql', true ),
 			),
-			array( '%s', '%s', '%s' )
+			array( '%s', '%s', '%d', '%s' )
 		);
 
 		return $ok ? (int) $wpdb->insert_id : false;
@@ -767,9 +824,11 @@ class Gallus_QR_Database {
 			return array();
 		}
 
-		$code_where = $code_id
-			? $wpdb->prepare( 'AND code_id = %d', $code_id )
-			: $this->scans_owner_sql( $owner_id );
+		// Placeholders stay in the outer prepare() call — never pre-substitute a
+		// fragment and interpolate it, or a literal % in the result would be
+		// re-read as a placeholder.
+		$code_where = $code_id ? ' AND code_id = %d' : $this->scans_owner_sql( $owner_id );
+		$code_args  = $code_id ? array( (int) $code_id ) : array();
 
 		$out = array();
 
@@ -777,9 +836,9 @@ class Gallus_QR_Database {
 			$wpdb->prepare(
 				"SELECT {$column} AS bucket, COUNT(*) AS hits
 				 FROM {$scans}
-				 WHERE scanned_at >= %s AND {$column} <> '' {$code_where}
+				 WHERE scanned_at >= %s AND {$column} <> ''{$code_where}
 				 GROUP BY {$column}",
-				$since
+				array_merge( array( $since ), $code_args )
 			)
 		);
 		foreach ( $rows as $row ) {
@@ -790,8 +849,8 @@ class Gallus_QR_Database {
 		$uas = $wpdb->get_col(
 			$wpdb->prepare(
 				"SELECT user_agent FROM {$scans}
-				 WHERE scanned_at >= %s AND {$column} = '' {$code_where}",
-				$since
+				 WHERE scanned_at >= %s AND {$column} = ''{$code_where}",
+				array_merge( array( $since ), $code_args )
 			)
 		);
 		foreach ( $uas as $ua ) {
@@ -835,20 +894,18 @@ class Gallus_QR_Database {
 	public function get_country_breakdown( $code_id, $since, $limit = 10, $owner_id = null ) {
 		global $wpdb;
 		$scans      = $this->scans_table();
-		$code_where = $code_id
-			? $wpdb->prepare( 'AND code_id = %d', $code_id )
-			: $this->scans_owner_sql( $owner_id );
+		$code_where = $code_id ? ' AND code_id = %d' : $this->scans_owner_sql( $owner_id );
+		$code_args  = $code_id ? array( (int) $code_id ) : array();
 
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT country, COUNT(*) AS hits
 				 FROM {$scans}
-				 WHERE scanned_at >= %s {$code_where}
+				 WHERE scanned_at >= %s{$code_where}
 				 GROUP BY country
 				 ORDER BY hits DESC
 				 LIMIT %d",
-				$since,
-				max( 1, (int) $limit )
+				array_merge( array( $since ), $code_args, array( max( 1, (int) $limit ) ) )
 			)
 		);
 
@@ -870,17 +927,16 @@ class Gallus_QR_Database {
 	public function get_hourly_breakdown( $code_id, $since, $owner_id = null ) {
 		global $wpdb;
 		$scans      = $this->scans_table();
-		$code_where = $code_id
-			? $wpdb->prepare( 'AND code_id = %d', $code_id )
-			: $this->scans_owner_sql( $owner_id );
+		$code_where = $code_id ? ' AND code_id = %d' : $this->scans_owner_sql( $owner_id );
+		$code_args  = $code_id ? array( (int) $code_id ) : array();
 
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT HOUR( scanned_at ) AS h, COUNT(*) AS hits
 				 FROM {$scans}
-				 WHERE scanned_at >= %s {$code_where}
+				 WHERE scanned_at >= %s{$code_where}
 				 GROUP BY HOUR( scanned_at )",
-				$since
+				array_merge( array( $since ), $code_args )
 			)
 		);
 

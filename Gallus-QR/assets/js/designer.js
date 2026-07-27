@@ -41,6 +41,20 @@
 		return allowed.indexOf( value ) !== -1 ? value : fallback;
 	}
 
+	// Mirrors WordPress's sanitize_hex_color(): #rgb or #rrggbb, nothing else.
+	var HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+	/**
+	 * Keep only real hex colours. Colours end up inside SVG attributes, so a
+	 * stray quote in a hand-edited or unsanitized design must never reach the
+	 * markup — this is the client-side half of that guarantee.
+	 */
+	function color( value, fallback ) {
+		if ( typeof value !== 'string' ) { return fallback; }
+		var trimmed = value.trim();
+		return HEX_COLOR.test( trimmed ) ? trimmed : fallback;
+	}
+
 	// Clamp any size-ish value into the supported export range.
 	function clampSize( n ) {
 		n = parseInt( n, 10 );
@@ -67,14 +81,17 @@
 		d.cornerStyle = oneOf( d.cornerStyle, CORNER_STYLES, DEFAULTS.cornerStyle );
 		d.cornerDot   = oneOf( d.cornerDot, CORNER_DOT_STYLES, DEFAULTS.cornerDot );
 		d.gradient    = oneOf( d.gradient, GRADIENT_TYPES, DEFAULTS.gradient );
+		d.fg          = color( d.fg, DEFAULTS.fg );
+		d.fg2         = d.fg2 ? color( d.fg2, DEFAULTS.fg2 ) : DEFAULTS.fg2;
+		d.bg          = color( d.bg, DEFAULTS.bg );
 
 		if ( d.frame && typeof d.frame === 'object' && d.frame.style
 			&& oneOf( d.frame.style, FRAME_STYLES, 'none' ) !== 'none' && d.frame.text ) {
 			d.frame = {
-				style:     d.frame.style,
+				style:     oneOf( d.frame.style, FRAME_STYLES, 'none' ),
 				text:      String( d.frame.text ).slice( 0, 40 ),
-				bandColor: d.frame.bandColor || '#000000',
-				textColor: d.frame.textColor || '#ffffff'
+				bandColor: color( d.frame.bandColor, '#000000' ),
+				textColor: color( d.frame.textColor, '#ffffff' )
 			};
 		} else {
 			d.frame = null;
@@ -207,8 +224,15 @@
 			}
 		);
 
+		// Escapes both text nodes and quoted attribute values below, so the
+		// quote characters matter as much as the angle brackets.
 		var esc = function ( s ) {
-			return String( s ).replace( /&/g, '&amp;' ).replace( /</g, '&lt;' ).replace( />/g, '&gt;' );
+			return String( s )
+				.replace( /&/g, '&amp;' )
+				.replace( /</g, '&lt;' )
+				.replace( />/g, '&gt;' )
+				.replace( /"/g, '&quot;' )
+				.replace( /'/g, '&#39;' );
 		};
 
 		return '<svg xmlns="http://www.w3.org/2000/svg" width="' + m.width + '" height="' + m.height + '"'

@@ -5,7 +5,7 @@ Tags: qr code, qr, qr code generator, dynamic qr, analytics
 Requires at least: 6.3
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 2.0.2
+Stable tag: 2.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -110,6 +110,36 @@ Yes. Under Settings → Gallus QR, set “Extra role with access” to Subscribe
 only sees codes they created. Administrators still see every code.
 
 == Changelog ==
+
+= 2.1.0 =
+Security and abuse hardening. Recommended for any site where more than one
+person holds Gallus QR access.
+
+* Design presets are now per-user, matching codes: you see and delete your own,
+  administrators see all. Previously anyone with access could read and delete
+  everyone's presets. Existing presets are assigned to the first administrator
+  on upgrade.
+* The [gallus_qr] shortcode and block no longer render non-URL codes (WiFi,
+  vCard and friends) on a post written by someone other than the code's owner.
+  Those types encode their payload verbatim in the page, so this stops one user
+  publishing another's WiFi password or contact details by guessing a slug.
+  Override with the `gallus_qr_can_embed_code` filter.
+* Scans are counted once per visitor per code per minute. This stops a scripted
+  request loop from inflating stats or — far worse — burning through a code's
+  scan limit and permanently disabling a QR that has already been printed.
+  Tune or disable with the `gallus_qr_scan_dedupe_window` filter.
+* X-Forwarded-For is only trusted when the request actually arrived through a
+  reverse proxy (loopback/private peer by default), and every address is
+  validated. Previously anyone could forge a fresh "unique visitor" per request.
+  Sites behind a public-facing CDN should allow its ranges with the
+  `gallus_qr_is_trusted_proxy` filter.
+* The settings screen now spells out what granting the extra role means: those
+  users can point links on your own domain anywhere they like.
+* Hardened the shared renderer's SVG escaping and added client-side colour
+  validation, so a hand-edited design can never inject markup.
+* Added a capability check to the donation-notice dismissal.
+* Internals: reworked three analytics queries so placeholders stay inside a
+  single prepare() call, and made fgetcsv()'s arguments explicit for PHP 8.4.
 
 = 2.0.2 =
 * Per-user code ownership: an extra role (e.g. Subscriber) with Gallus QR

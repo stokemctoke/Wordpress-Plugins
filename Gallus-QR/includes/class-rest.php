@@ -539,13 +539,13 @@ class Gallus_QR_REST {
 	// --- Presets ----------------------------------------------------------------
 
 	/**
-	 * All design presets, newest first.
+	 * The current user's design presets, newest first (admins see all).
 	 *
 	 * @return WP_REST_Response
 	 */
 	public function get_presets() {
 		$out = array();
-		foreach ( $this->db->get_presets() as $preset ) {
+		foreach ( $this->db->get_presets( Gallus_QR_Settings::ownership_scope() ) as $preset ) {
 			$design = json_decode( (string) $preset->design, true );
 			$out[]  = array(
 				'id'     => (int) $preset->id,
@@ -594,13 +594,24 @@ class Gallus_QR_REST {
 	}
 
 	/**
-	 * Delete a design preset.
+	 * Delete a design preset the current user owns (admins: any).
 	 *
 	 * @param WP_REST_Request $request
-	 * @return WP_REST_Response
+	 * @return WP_REST_Response|WP_Error
 	 */
 	public function delete_preset( WP_REST_Request $request ) {
-		$this->db->delete_preset( (int) $request['id'] );
+		$id     = (int) $request['id'];
+		$preset = $this->db->get_preset_by_id( $id );
+
+		if ( ! $preset || ! Gallus_QR_Settings::can_access_row( $preset ) ) {
+			return new WP_Error(
+				'gallus_qr_not_found',
+				__( 'No such preset.', 'gallus-qr' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		$this->db->delete_preset( $id );
 		return new WP_REST_Response( array( 'deleted' => true ) );
 	}
 

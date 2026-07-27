@@ -122,13 +122,47 @@ class Gallus_QR_Shortcode {
 		}
 
 		$code = $this->db->get_code_by_id( $code_id );
-		if ( ! $code ) {
+		if ( ! $code || ! $this->can_embed( $code ) ) {
 			return '';
 		}
 
 		$size = isset( $attributes['size'] ) ? (int) $attributes['size'] : 256;
 
 		return $this->render_code_html( $code, $size );
+	}
+
+	/**
+	 * May this code be rendered on the page currently being built?
+	 *
+	 * URL codes only ever expose a link, so they embed freely. Every other type
+	 * encodes its payload *verbatim* in the markup — a WiFi code carries the
+	 * network password, a vCard carries someone's phone number and address — so
+	 * those only render on a post written by the code's own author. Without
+	 * this, anyone able to add a shortcode could publish another user's
+	 * secrets simply by guessing a slug.
+	 *
+	 * @param object $code Code row.
+	 * @return bool
+	 */
+	private function can_embed( $code ) {
+		$type    = ! empty( $code->payload_type ) ? $code->payload_type : 'url';
+		$allowed = true;
+
+		if ( 'url' !== $type ) {
+			$post_id = get_the_ID();
+			$author  = $post_id ? (int) get_post_field( 'post_author', $post_id ) : 0;
+			$owner   = isset( $code->user_id ) ? (int) $code->user_id : 0;
+
+			$allowed = ( $author > 0 && $owner > 0 && $author === $owner );
+		}
+
+		/**
+		 * Filter whether a saved code may be embedded on the current page.
+		 *
+		 * @param bool   $allowed Whether rendering is permitted.
+		 * @param object $code    The code row.
+		 */
+		return (bool) apply_filters( 'gallus_qr_can_embed_code', $allowed, $code );
 	}
 
 	/**
@@ -152,7 +186,7 @@ class Gallus_QR_Shortcode {
 		}
 
 		$code = $this->db->get_code_by_slug( sanitize_text_field( $atts['slug'] ) );
-		if ( ! $code ) {
+		if ( ! $code || ! $this->can_embed( $code ) ) {
 			return '';
 		}
 

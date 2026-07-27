@@ -140,6 +140,7 @@ class Gallus_QR_Admin {
 	 */
 	public function handle_donate_dismiss() {
 		if ( ! isset( $_GET['gqr_dismiss_donate'] )
+			|| ! current_user_can( Gallus_QR_Settings::capability() )
 			|| ! check_admin_referer( 'gqr_dismiss_donate' ) ) {
 			return;
 		}

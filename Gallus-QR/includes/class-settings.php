@@ -33,19 +33,30 @@ class Gallus_QR_Settings {
 	}
 
 	/**
+	 * May the current user read/edit/delete this owned row? Admins can reach
+	 * everything; everyone else only their own.
+	 *
+	 * @param object|null $row Any row carrying a user_id (code or preset).
+	 * @return bool
+	 */
+	public static function can_access_row( $row ) {
+		if ( ! $row || ! isset( $row->user_id ) ) {
+			return false;
+		}
+		if ( self::can_manage_all() ) {
+			return true;
+		}
+		return (int) $row->user_id === (int) get_current_user_id();
+	}
+
+	/**
 	 * May the current user read/edit/delete this code row?
 	 *
 	 * @param object|null $code Codes-table row (needs user_id).
 	 * @return bool
 	 */
 	public static function can_access_code( $code ) {
-		if ( ! $code ) {
-			return false;
-		}
-		if ( self::can_manage_all() ) {
-			return true;
-		}
-		return (int) $code->user_id === (int) get_current_user_id();
+		return self::can_access_row( $code );
 	}
 
 	/**
@@ -247,6 +258,10 @@ class Gallus_QR_Settings {
 								<?php endforeach; ?>
 							</select>
 							<p class="description"><?php esc_html_e( 'Administrators always manage every code. An extra role (e.g. Subscriber) can use Gallus QR too, but each of those users only sees and manages their own codes.', 'gallus-qr' ); ?></p>
+							<p class="description gqr-warning">
+								<strong><?php esc_html_e( 'Think before you grant this.', 'gallus-qr' ); ?></strong>
+								<?php esc_html_e( 'Trackable codes are redirects on your own domain, so anyone in this role can point a link on your site at any destination they like. On a site with open registration that means any visitor who signs up. Leave this on “Administrators only” unless the role is limited to people you actually trust.', 'gallus-qr' ); ?>
+							</p>
 						</td>
 					</tr>
 					<tr>

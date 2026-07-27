@@ -486,3 +486,12 @@
 	font-weight: 700;
 	margin-left: 0.25rem;
 }
+
+/* Settings screen: consequences worth reading before flipping a switch. */
+.gqr-warning {
+	margin-top: 0.5rem;
+	padding: 0.6rem 0.8rem;
+	border-left: 4px solid #dba617;
+	background: #fcf9e8;
+	max-width: 46em;
+}

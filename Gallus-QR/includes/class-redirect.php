@@ -93,23 +93,33 @@ class Gallus_QR_Redirect {
 
 		// Count the scan (privacy: store only a salted hash of the IP). The
 		// counter update is atomic and doubles as the scan-cap gate. Bots are
-		// redirected but never counted (and never consume the cap).
+		// redirected but never counted (and never consume the cap), and repeat
+		// hits from the same visitor inside the dedupe window are redirected
+		// without counting — otherwise a scripted loop could burn through
+		// max_scans and permanently kill a code that's already been printed.
 		$ua      = $this->user_agent();
 		$is_bot  = Gallus_QR_Settings::get( 'bot_filter' ) && Gallus_QR_Analytics::is_bot( $ua );
 		$variant = $this->pick_variant( $code );
+		$ip_hash = $this->client_ip_hash();
 
 		if ( (int) $code->trackable === 1 && ! $is_bot ) {
-			if ( ! $this->db->try_count_scan( (int) $code->id ) ) {
-				$this->fail_over( $code ); // cap reached
-			}
+			if ( $this->claim_scan( (int) $code->id, $ip_hash ) ) {
+				if ( ! $this->db->try_count_scan( (int) $code->id ) ) {
+					$this->fail_over( $code ); // cap reached
+				}
 
-			$this->db->insert_scan(
-				(int) $code->id,
-				$this->client_ip_hash(),
-				$ua,
-				$variant,
-				Gallus_QR_Analytics::detect_country()
-			);
+				$this->db->insert_scan(
+					(int) $code->id,
+					$ip_hash,
+					$ua,
+					$variant,
+					Gallus_QR_Analytics::detect_country()
+				);
+			} elseif ( $this->is_capped( $code ) ) {
+				// Uncounted repeat hit, but the code is already exhausted —
+				// it must still fail over rather than quietly keep working.
+				$this->fail_over( $code );
+			}
 		}
 
 		// 302 (temporary) so scans always reach us and the destination can change later.
@@ -182,21 +192,125 @@ class Gallus_QR_Redirect {
 	}
 
 	/**
+	 * Is this code already at its scan limit? Read-only companion to
+	 * try_count_scan(), for hits we deliberately don't count.
+	 *
+	 * @param object $code
+	 * @return bool
+	 */
+	private function is_capped( $code ) {
+		$max = isset( $code->max_scans ) ? (int) $code->max_scans : 0;
+		return $max > 0 && (int) $code->scan_count >= $max;
+	}
+
+	/**
+	 * Claim this hit as a countable scan, or report that we've already counted
+	 * this visitor for this code very recently.
+	 *
+	 * Without this, anyone who knows a slug could hold down a request loop and
+	 * either inflate the stats or — far worse — burn through a code's max_scans
+	 * so a QR that's already printed (or etched into a PCB) stops working for
+	 * everyone. One scan per visitor per code per window is plenty for
+	 * analytics and removes that lever entirely.
+	 *
+	 * @param int    $code_id
+	 * @param string $ip_hash
+	 * @return bool True when the caller should count this hit.
+	 */
+	private function claim_scan( $code_id, $ip_hash ) {
+		/**
+		 * Filter the per-visitor scan dedupe window, in seconds.
+		 * Return 0 to count every single hit (the pre-2.1.0 behaviour).
+		 *
+		 * @param int $seconds
+		 * @param int $code_id
+		 */
+		$window = (int) apply_filters( 'gallus_qr_scan_dedupe_window', MINUTE_IN_SECONDS, $code_id );
+
+		if ( $window < 1 ) {
+			return true;
+		}
+
+		$key = 'gqr_seen_' . (int) $code_id . '_' . substr( $ip_hash, 0, 24 );
+
+		if ( get_transient( $key ) ) {
+			return false;
+		}
+
+		set_transient( $key, 1, $window );
+		return true;
+	}
+
+	/**
 	 * Salted SHA-256 of the client IP — enough for unique-ish counts, never the
-	 * raw address. Honours a reverse proxy (CloudPanel/nginx sits in front).
+	 * raw address.
 	 *
 	 * @return string
 	 */
 	private function client_ip_hash() {
-		$ip = '';
-		if ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
-			$parts = explode( ',', sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) );
-			$ip    = trim( $parts[0] );
-		} elseif ( ! empty( $_SERVER['REMOTE_ADDR'] ) ) {
-			$ip = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
+		return hash( 'sha256', $this->client_ip() . wp_salt( 'auth' ) );
+	}
+
+	/**
+	 * The client's IP address.
+	 *
+	 * X-Forwarded-For is only consulted when the request actually reached us
+	 * through a trusted proxy — anyone can send that header, so trusting it
+	 * blindly lets a visitor forge a fresh "unique visitor" on every request.
+	 * Defaults cover the usual CloudPanel/nginx-in-front setup (the request
+	 * arrives from loopback or a private address); sites behind a public-facing
+	 * CDN should add its ranges via the filter below.
+	 *
+	 * @return string '' when no valid address could be determined.
+	 */
+	private function client_ip() {
+		$remote = isset( $_SERVER['REMOTE_ADDR'] )
+			? trim( sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) )
+			: '';
+
+		if ( ! filter_var( $remote, FILTER_VALIDATE_IP ) ) {
+			return '';
 		}
 
-		return hash( 'sha256', $ip . wp_salt( 'auth' ) );
+		if ( empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) || ! $this->is_trusted_proxy( $remote ) ) {
+			return $remote;
+		}
+
+		// Left-most entry is the original client; take the first parsable one.
+		$forwarded = explode( ',', sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) );
+		foreach ( $forwarded as $candidate ) {
+			$candidate = trim( $candidate );
+			if ( filter_var( $candidate, FILTER_VALIDATE_IP ) ) {
+				return $candidate;
+			}
+		}
+
+		return $remote;
+	}
+
+	/**
+	 * Does this address belong to a reverse proxy we're willing to believe?
+	 *
+	 * @param string $ip Validated IP address.
+	 * @return bool
+	 */
+	private function is_trusted_proxy( $ip ) {
+		// Loopback and private/reserved ranges: a request arriving from one of
+		// these came through our own front-end server, not off the internet.
+		$is_private = ! filter_var(
+			$ip,
+			FILTER_VALIDATE_IP,
+			FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+		);
+
+		/**
+		 * Filter whether X-Forwarded-For from this address should be trusted.
+		 * Add your CDN's egress ranges here if it fronts the site publicly.
+		 *
+		 * @param bool   $is_private Whether the address is loopback/private.
+		 * @param string $ip         The immediate peer address.
+		 */
+		return (bool) apply_filters( 'gallus_qr_is_trusted_proxy', $is_private, $ip );
 	}
 
 	/**
