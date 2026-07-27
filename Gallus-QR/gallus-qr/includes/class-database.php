@@ -68,10 +68,12 @@ class Gallus_QR_Database {
 			destination_b text NULL,
 			switch_at datetime NULL DEFAULT NULL,
 			ab_split tinyint(3) unsigned NOT NULL DEFAULT 50,
+			user_id bigint(20) unsigned NOT NULL DEFAULT 0,
 			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at datetime NULL DEFAULT NULL,
 			PRIMARY KEY  (id),
-			UNIQUE KEY slug (slug)
+			UNIQUE KEY slug (slug),
+			KEY user_id (user_id)
 		) {$charset_collate};";
 
 		$sql_scans = "CREATE TABLE {$scans} (
@@ -138,6 +140,57 @@ class Gallus_QR_Database {
 				$role->add_cap( 'manage_gallus_qr' );
 			}
 		}
+
+		if ( (int) $installed < 4 ) {
+			// Existing codes predate ownership — assign them to the first admin
+			// so they stay with site operators, not every new Subscriber.
+			$codes   = $this->codes_table();
+			$admins = get_users(
+				array(
+					'role'    => 'administrator',
+					'number'  => 1,
+					'fields'  => 'ID',
+					'orderby' => 'ID',
+					'order'   => 'ASC',
+				)
+			);
+			$owner_id = ! empty( $admins ) ? (int) $admins[0] : 0;
+			$wpdb->query(
+				$wpdb->prepare(
+					"UPDATE {$codes} SET user_id = %d WHERE user_id = 0",
+					$owner_id
+				)
+			);
+		}
+	}
+
+	/**
+	 * SQL fragment scoping list/stats queries to one owner (empty = no filter).
+	 * $alias should include the trailing dot when used (e.g. 'c.').
+	 *
+	 * @param int|null $owner_id
+	 * @param string   $alias
+	 * @return string
+	 */
+	private function owner_sql( $owner_id, $alias = '' ) {
+		if ( null === $owner_id ) {
+			return '';
+		}
+		return ' AND ' . $alias . 'user_id = ' . (int) $owner_id;
+	}
+
+	/**
+	 * Restrict scan-table aggregates to codes owned by one user (empty = all).
+	 *
+	 * @param int|null $owner_id
+	 * @return string
+	 */
+	private function scans_owner_sql( $owner_id ) {
+		if ( null === $owner_id ) {
+			return '';
+		}
+		$codes = $this->codes_table();
+		return ' AND code_id IN ( SELECT id FROM ' . $codes . ' WHERE user_id = ' . (int) $owner_id . ' )';
 	}
 
 	/**
@@ -215,13 +268,18 @@ class Gallus_QR_Database {
 	 * @param string $slug         Custom slug (validated by the caller), or ''
 	 *                             to generate a random one. The UNIQUE key is
 	 *                             the final referee on races.
+	 * @param int|null $user_id    Owner; defaults to the current user.
 	 * @return string|false
 	 */
-	public function insert_code( $title, $destination, $trackable = true, $design = '', $payload_type = 'url', $payload = '', $slug = '' ) {
+	public function insert_code( $title, $destination, $trackable = true, $design = '', $payload_type = 'url', $payload = '', $slug = '', $user_id = null ) {
 		global $wpdb;
 
 		if ( '' === $slug ) {
 			$slug = $this->generate_unique_slug();
+		}
+
+		if ( null === $user_id ) {
+			$user_id = get_current_user_id();
 		}
 
 		$ok = $wpdb->insert(
@@ -234,9 +292,10 @@ class Gallus_QR_Database {
 				'destination'  => $destination,
 				'trackable'    => $trackable ? 1 : 0,
 				'design'       => $design,
+				'user_id'      => (int) $user_id,
 				'created_at'   => current_time( 'mysql', true ),
 			),
-			array( '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s' )
 		);
 
 		return $ok ? $slug : false;
@@ -500,26 +559,58 @@ class Gallus_QR_Database {
 		return false !== $wpdb->delete( $this->presets_table(), array( 'id' => (int) $id ), array( '%d' ) );
 	}
 
-	/** @return int Total number of saved codes. */
-	public function count_codes() {
+	/**
+	 * Distinct owner user IDs that have at least one code (for admin filters).
+	 *
+	 * @return int[]
+	 */
+	public function get_code_owner_ids() {
 		global $wpdb;
-		return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$this->codes_table()}" );
+		$ids = $wpdb->get_col(
+			"SELECT DISTINCT user_id FROM {$this->codes_table()}
+			 WHERE user_id > 0
+			 ORDER BY user_id ASC"
+		);
+		return array_map( 'intval', $ids ? $ids : array() );
+	}
+
+	/**
+	 * Total number of saved codes, optionally limited to one owner.
+	 *
+	 * @param int|null $owner_id null = all codes.
+	 * @return int
+	 */
+	public function count_codes( $owner_id = null ) {
+		global $wpdb;
+		$codes = $this->codes_table();
+		$owner = $this->owner_sql( $owner_id );
+
+		if ( '' === $owner ) {
+			return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$codes}" );
+		}
+
+		return (int) $wpdb->get_var(
+			"SELECT COUNT(*) FROM {$codes} WHERE 1=1{$owner}"
+		);
 	}
 
 	/**
 	 * All saved codes, newest first, each with a total_scans column.
 	 *
+	 * @param int|null $owner_id null = all codes; otherwise only that user's.
 	 * @return array
 	 */
-	public function get_codes_with_counts() {
+	public function get_codes_with_counts( $owner_id = null ) {
 		global $wpdb;
 		$codes = $this->codes_table();
 		$scans = $this->scans_table();
+		$owner = $this->owner_sql( $owner_id, 'c.' );
 
 		return $wpdb->get_results(
 			"SELECT c.*, COUNT( s.id ) AS total_scans
 			 FROM {$codes} c
 			 LEFT JOIN {$scans} s ON s.code_id = c.id
+			 WHERE 1=1{$owner}
 			 GROUP BY c.id
 			 ORDER BY c.created_at DESC"
 		);
@@ -529,15 +620,17 @@ class Gallus_QR_Database {
 	 * One page of codes (newest first, each with total_scans), plus the total
 	 * row count for pagination headers.
 	 *
-	 * @param int    $page     1-based page number.
-	 * @param int    $per_page Rows per page (1–100).
-	 * @param string $search   Optional needle matched against title/slug/destination.
+	 * @param int      $page     1-based page number.
+	 * @param int      $per_page Rows per page (1–100).
+	 * @param string   $search   Optional needle matched against title/slug/destination.
+	 * @param int|null $owner_id null = all codes; otherwise only that user's.
 	 * @return array{items:array,total:int}
 	 */
-	public function get_codes_page( $page, $per_page, $search = '' ) {
+	public function get_codes_page( $page, $per_page, $search = '', $owner_id = null ) {
 		global $wpdb;
 		$codes = $this->codes_table();
 		$scans = $this->scans_table();
+		$owner = $this->owner_sql( $owner_id, 'c.' );
 
 		$page     = max( 1, (int) $page );
 		$per_page = max( 1, min( 100, (int) $per_page ) );
@@ -550,7 +643,7 @@ class Gallus_QR_Database {
 					"SELECT c.*, COUNT( s.id ) AS total_scans
 					 FROM {$codes} c
 					 LEFT JOIN {$scans} s ON s.code_id = c.id
-					 WHERE c.title LIKE %s OR c.slug LIKE %s OR c.destination LIKE %s
+					 WHERE ( c.title LIKE %s OR c.slug LIKE %s OR c.destination LIKE %s ){$owner}
 					 GROUP BY c.id
 					 ORDER BY c.created_at DESC
 					 LIMIT %d OFFSET %d",
@@ -564,7 +657,7 @@ class Gallus_QR_Database {
 			$total = (int) $wpdb->get_var(
 				$wpdb->prepare(
 					"SELECT COUNT(*) FROM {$codes} c
-					 WHERE c.title LIKE %s OR c.slug LIKE %s OR c.destination LIKE %s",
+					 WHERE ( c.title LIKE %s OR c.slug LIKE %s OR c.destination LIKE %s ){$owner}",
 					$like,
 					$like,
 					$like
@@ -576,6 +669,7 @@ class Gallus_QR_Database {
 					"SELECT c.*, COUNT( s.id ) AS total_scans
 					 FROM {$codes} c
 					 LEFT JOIN {$scans} s ON s.code_id = c.id
+					 WHERE 1=1{$owner}
 					 GROUP BY c.id
 					 ORDER BY c.created_at DESC
 					 LIMIT %d OFFSET %d",
@@ -583,7 +677,9 @@ class Gallus_QR_Database {
 					$offset
 				)
 			);
-			$total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$codes}" );
+			$total = (int) $wpdb->get_var(
+				"SELECT COUNT(*) FROM {$codes} c WHERE 1=1{$owner}"
+			);
 		}
 
 		return array(
@@ -657,12 +753,13 @@ class Gallus_QR_Database {
 	 * user-agents are parsed in PHP as a fallback — new rows are a pure
 	 * GROUP BY.
 	 *
-	 * @param int    $code_id 0 = all codes.
-	 * @param string $since   MySQL datetime (UTC).
-	 * @param string $column  One of device|os|browser.
+	 * @param int      $code_id  0 = all codes (optionally owner-scoped).
+	 * @param string   $since    MySQL datetime (UTC).
+	 * @param string   $column   One of device|os|browser.
+	 * @param int|null $owner_id When $code_id is 0, limit to this owner's codes.
 	 * @return array<string,int> Bucket => count, biggest first.
 	 */
-	public function get_column_breakdown( $code_id, $since, $column ) {
+	public function get_column_breakdown( $code_id, $since, $column, $owner_id = null ) {
 		global $wpdb;
 		$scans = $this->scans_table();
 
@@ -670,7 +767,9 @@ class Gallus_QR_Database {
 			return array();
 		}
 
-		$code_where = $code_id ? $wpdb->prepare( 'AND code_id = %d', $code_id ) : '';
+		$code_where = $code_id
+			? $wpdb->prepare( 'AND code_id = %d', $code_id )
+			: $this->scans_owner_sql( $owner_id );
 
 		$out = array();
 
@@ -727,15 +826,18 @@ class Gallus_QR_Database {
 	/**
 	 * Country breakdown since a given datetime ('' bucket = unknown).
 	 *
-	 * @param int    $code_id 0 = all codes.
-	 * @param string $since
-	 * @param int    $limit
+	 * @param int      $code_id  0 = all codes (optionally owner-scoped).
+	 * @param string   $since
+	 * @param int      $limit
+	 * @param int|null $owner_id When $code_id is 0, limit to this owner's codes.
 	 * @return array<string,int> Country code => count, biggest first.
 	 */
-	public function get_country_breakdown( $code_id, $since, $limit = 10 ) {
+	public function get_country_breakdown( $code_id, $since, $limit = 10, $owner_id = null ) {
 		global $wpdb;
 		$scans      = $this->scans_table();
-		$code_where = $code_id ? $wpdb->prepare( 'AND code_id = %d', $code_id ) : '';
+		$code_where = $code_id
+			? $wpdb->prepare( 'AND code_id = %d', $code_id )
+			: $this->scans_owner_sql( $owner_id );
 
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
@@ -760,14 +862,17 @@ class Gallus_QR_Database {
 	/**
 	 * Scans per hour-of-day (0–23, UTC) since a given datetime.
 	 *
-	 * @param int    $code_id 0 = all codes.
-	 * @param string $since
+	 * @param int      $code_id  0 = all codes (optionally owner-scoped).
+	 * @param string   $since
+	 * @param int|null $owner_id When $code_id is 0, limit to this owner's codes.
 	 * @return array<int,int> 24 entries, hour => count.
 	 */
-	public function get_hourly_breakdown( $code_id, $since ) {
+	public function get_hourly_breakdown( $code_id, $since, $owner_id = null ) {
 		global $wpdb;
 		$scans      = $this->scans_table();
-		$code_where = $code_id ? $wpdb->prepare( 'AND code_id = %d', $code_id ) : '';
+		$code_where = $code_id
+			? $wpdb->prepare( 'AND code_id = %d', $code_id )
+			: $this->scans_owner_sql( $owner_id );
 
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
@@ -789,21 +894,23 @@ class Gallus_QR_Database {
 	/**
 	 * The most-scanned codes since a given datetime (dashboard widget).
 	 *
-	 * @param string $since MySQL datetime (UTC).
-	 * @param int    $limit
+	 * @param string   $since    MySQL datetime (UTC).
+	 * @param int      $limit
+	 * @param int|null $owner_id null = all codes; otherwise only that user's.
 	 * @return array Rows with slug/title plus a hits column.
 	 */
-	public function get_top_codes( $since, $limit = 5 ) {
+	public function get_top_codes( $since, $limit = 5, $owner_id = null ) {
 		global $wpdb;
 		$codes = $this->codes_table();
 		$scans = $this->scans_table();
+		$owner = $this->owner_sql( $owner_id, 'c.' );
 
 		return $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT c.id, c.slug, c.title, COUNT( s.id ) AS hits
 				 FROM {$codes} c
 				 INNER JOIN {$scans} s ON s.code_id = c.id
-				 WHERE s.scanned_at >= %s
+				 WHERE s.scanned_at >= %s{$owner}
 				 GROUP BY c.id
 				 ORDER BY hits DESC
 				 LIMIT %d",

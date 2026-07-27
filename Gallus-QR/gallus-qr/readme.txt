@@ -5,7 +5,7 @@ Tags: qr code, qr, qr code generator, dynamic qr, analytics
 Requires at least: 6.3
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 2.0.1
+Stable tag: 2.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,7 +54,8 @@ no accounts, no per-scan fees — your codes, your links, your data.
 * "QR code" row action on posts, pages and WooCommerce products
 * Admin-bar "QR for this page" shortcut
 * Bulk creation from a CSV upload
-* Role-based access control
+* Role-based access control — extra roles only see and manage their own codes;
+  administrators see everything
 
 == Privacy ==
 
@@ -102,7 +103,21 @@ Country detection reads a header your CDN or server adds (such as
 Cloudflare's `CF-IPCountry`). Without such a header the plugin records
 nothing — it never calls external geolocation services.
 
+= Can Subscribers manage their own QR codes without seeing mine? =
+
+Yes. Under Settings → Gallus QR, set “Extra role with access” to Subscriber
+(or another role). Those users get the Gallus QR screens, but each person
+only sees codes they created. Administrators still see every code.
+
 == Changelog ==
+
+= 2.0.2 =
+* Per-user code ownership: an extra role (e.g. Subscriber) with Gallus QR
+  access only lists, edits, exports and deletes their own codes.
+  Administrators still see and manage every code. Existing codes are assigned
+  to the first administrator on upgrade.
+* Admin Owner filter on Scan Stats: All codes, My codes, or a specific user
+  (with an Owner column when browsing beyond your own).
 
 = 2.0.1 =
 * Added a public roadmap (trackable vCard/event codes via hosted payloads,

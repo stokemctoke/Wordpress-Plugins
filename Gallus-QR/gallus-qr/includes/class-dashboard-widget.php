@@ -38,7 +38,7 @@ class Gallus_QR_Dashboard_Widget {
 
 	public function render() {
 		$since = gmdate( 'Y-m-d H:i:s', time() - 7 * DAY_IN_SECONDS );
-		$top   = $this->db->get_top_codes( $since, 5 );
+		$top   = $this->db->get_top_codes( $since, 5, Gallus_QR_Settings::ownership_scope() );
 
 		if ( empty( $top ) ) {
 			echo '<p>' . esc_html__( 'No scans in the last 7 days.', 'gallus-qr' ) . '</p>';

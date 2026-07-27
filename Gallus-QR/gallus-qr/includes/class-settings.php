@@ -23,6 +23,90 @@ class Gallus_QR_Settings {
 		return apply_filters( 'gallus_qr_capability', 'manage_gallus_qr' );
 	}
 
+	/**
+	 * Can this user see and manage every code (admins), not just their own?
+	 *
+	 * @return bool
+	 */
+	public static function can_manage_all() {
+		return current_user_can( 'manage_options' );
+	}
+
+	/**
+	 * May the current user read/edit/delete this code row?
+	 *
+	 * @param object|null $code Codes-table row (needs user_id).
+	 * @return bool
+	 */
+	public static function can_access_code( $code ) {
+		if ( ! $code ) {
+			return false;
+		}
+		if ( self::can_manage_all() ) {
+			return true;
+		}
+		return (int) $code->user_id === (int) get_current_user_id();
+	}
+
+	/**
+	 * Default owner filter for list/stats queries: null = no filter (admins
+	 * see all), otherwise only that user's codes.
+	 *
+	 * @return int|null
+	 */
+	public static function ownership_scope() {
+		return self::can_manage_all() ? null : (int) get_current_user_id();
+	}
+
+	/**
+	 * Resolve an admin owner filter value into a query scope.
+	 *
+	 * Accepted raw values: `all` (everyone), `me` (current user), or a
+	 * numeric WordPress user ID. Non-admins always get their own ID.
+	 *
+	 * @param string|null $raw Filter token; null falls back to ownership_scope().
+	 * @return int|null null = all codes; int = that owner's codes.
+	 */
+	public static function resolve_owner_filter( $raw ) {
+		if ( ! self::can_manage_all() ) {
+			return (int) get_current_user_id();
+		}
+
+		if ( null === $raw || '' === $raw ) {
+			return self::ownership_scope();
+		}
+
+		$raw = sanitize_text_field( (string) $raw );
+
+		if ( 'all' === $raw ) {
+			return null;
+		}
+		if ( 'me' === $raw ) {
+			return (int) get_current_user_id();
+		}
+		if ( ctype_digit( $raw ) ) {
+			return (int) $raw;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Owner scope from the current request (`gqr_owner` query arg on admin
+	 * screens, or `owner` REST param). Falls back to ownership_scope().
+	 *
+	 * @return int|null
+	 */
+	public static function request_owner_scope() {
+		$raw = null;
+		if ( isset( $_GET['gqr_owner'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$raw = wp_unslash( $_GET['gqr_owner'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput
+		} elseif ( isset( $_GET['owner'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$raw = wp_unslash( $_GET['owner'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput
+		}
+		return self::resolve_owner_filter( null === $raw ? null : (string) $raw );
+	}
+
 	/** @return array Default values for every setting. */
 	public static function defaults() {
 		return array(
@@ -162,7 +246,7 @@ class Gallus_QR_Settings {
 									</option>
 								<?php endforeach; ?>
 							</select>
-							<p class="description"><?php esc_html_e( 'Administrators can always manage QR codes; pick one more role to share access with.', 'gallus-qr' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Administrators always manage every code. An extra role (e.g. Subscriber) can use Gallus QR too, but each of those users only sees and manages their own codes.', 'gallus-qr' ); ?></p>
 						</td>
 					</tr>
 					<tr>

@@ -1,2 +1,6 @@
 # Plugin build artifacts
 *.zip
+
+# Local virtualenvs / tooling (never ship)
+**/VirtualEnvs/
+**/.venv/

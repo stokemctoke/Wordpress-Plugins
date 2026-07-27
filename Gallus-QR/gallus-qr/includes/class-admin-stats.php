@@ -82,52 +82,87 @@ class Gallus_QR_Admin_Stats {
 	 * editable label/destination, lifecycle status, totals (total + unique),
 	 * device split, a bar chart, and re-download/delete actions. Charts are
 	 * server-rendered; edits go through the REST API (stats.js).
+	 *
+	 * Admins also get an owner filter (all / mine / specific user).
 	 */
 	public function render_page() {
-		$codes  = $this->db->get_codes_with_counts();
-		$ranges = $this->ranges();
+		$can_filter = Gallus_QR_Settings::can_manage_all();
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$owner_raw = isset( $_GET['gqr_owner'] ) ? sanitize_text_field( wp_unslash( $_GET['gqr_owner'] ) ) : ( $can_filter ? 'all' : 'me' );
+		$owner     = Gallus_QR_Settings::resolve_owner_filter( $owner_raw );
+		$codes     = $this->db->get_codes_with_counts( $owner );
+		$ranges    = $this->ranges();
 
 		// Selected range (default 30 days).
-		$range_key = isset( $_GET['gqr_range'] ) ? sanitize_key( $_GET['gqr_range'] ) : '30';
+		$range_key = isset( $_GET['gqr_range'] ) ? sanitize_key( $_GET['gqr_range'] ) : '30'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( ! isset( $ranges[ $range_key ] ) ) {
 			$range_key = '30';
 		}
 		$days = $ranges[ $range_key ][1];
 
 		// Scan timestamps are stored in UTC, so range boundaries are UTC too.
-		$now   = current_time( 'mysql', true );
-		$since = gmdate( 'Y-m-d H:i:s', time() - $days * DAY_IN_SECONDS );
+		$now     = current_time( 'mysql', true );
+		$since   = gmdate( 'Y-m-d H:i:s', time() - $days * DAY_IN_SECONDS );
+		$owners  = $can_filter ? $this->owner_filter_choices() : array();
+		$show_owner_col = $can_filter && 'me' !== $owner_raw;
 		?>
 		<div class="wrap gqr-wrap">
 			<h1><?php esc_html_e( 'Gallus QR — Scan Stats', 'gallus-qr' ); ?></h1>
 
 			<div id="gqr-stats-notice"></div>
 
-			<?php if ( empty( $codes ) ) : ?>
-				<p>
-					<?php esc_html_e( 'No saved codes yet. Create one on the Generator screen.', 'gallus-qr' ); ?>
-				</p>
-			<?php else : ?>
-				<form method="get" class="gqr-range-form">
-					<input type="hidden" name="page" value="gallus-qr-stats">
+			<form method="get" class="gqr-range-form">
+				<input type="hidden" name="page" value="gallus-qr-stats">
+				<label>
+					<?php esc_html_e( 'Date range:', 'gallus-qr' ); ?>
+					<select name="gqr_range" onchange="this.form.submit()">
+						<?php foreach ( $ranges as $key => $info ) : ?>
+							<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $key, $range_key ); ?>>
+								<?php echo esc_html( $info[0] ); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+				</label>
+				<?php if ( $can_filter ) : ?>
 					<label>
-						<?php esc_html_e( 'Date range:', 'gallus-qr' ); ?>
-						<select name="gqr_range" onchange="this.form.submit()">
-							<?php foreach ( $ranges as $key => $info ) : ?>
-								<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $key, $range_key ); ?>>
-									<?php echo esc_html( $info[0] ); ?>
-								</option>
-							<?php endforeach; ?>
+						<?php esc_html_e( 'Owner:', 'gallus-qr' ); ?>
+						<select name="gqr_owner" onchange="this.form.submit()">
+							<option value="all" <?php selected( $owner_raw, 'all' ); ?>><?php esc_html_e( 'All codes', 'gallus-qr' ); ?></option>
+							<option value="me" <?php selected( $owner_raw, 'me' ); ?>><?php esc_html_e( 'My codes', 'gallus-qr' ); ?></option>
+							<?php if ( ! empty( $owners ) ) : ?>
+								<optgroup label="<?php esc_attr_e( 'By user', 'gallus-qr' ); ?>">
+									<?php foreach ( $owners as $uid => $label ) : ?>
+										<option value="<?php echo esc_attr( (string) $uid ); ?>" <?php selected( $owner_raw, (string) $uid ); ?>>
+											<?php echo esc_html( $label ); ?>
+										</option>
+									<?php endforeach; ?>
+								</optgroup>
+							<?php endif; ?>
 						</select>
 					</label>
-				</form>
+				<?php endif; ?>
+			</form>
 
-				<?php $this->render_overview( $since ); ?>
+			<?php if ( empty( $codes ) ) : ?>
+				<p>
+					<?php
+					if ( $can_filter && 'all' !== $owner_raw && $this->db->count_codes( null ) > 0 ) {
+						esc_html_e( 'No codes match this owner filter. Try “All codes” or another user.', 'gallus-qr' );
+					} else {
+						esc_html_e( 'No saved codes yet. Create one on the Generator screen.', 'gallus-qr' );
+					}
+					?>
+				</p>
+			<?php else : ?>
+				<?php $this->render_overview( $since, $owner ); ?>
 
 				<table class="widefat gqr-stats-table">
 					<thead>
 						<tr>
 							<th><?php esc_html_e( 'Label', 'gallus-qr' ); ?></th>
+							<?php if ( $show_owner_col ) : ?>
+								<th><?php esc_html_e( 'Owner', 'gallus-qr' ); ?></th>
+							<?php endif; ?>
 							<th><?php esc_html_e( 'Short link', 'gallus-qr' ); ?></th>
 							<th><?php esc_html_e( 'Destination', 'gallus-qr' ); ?></th>
 							<th><?php esc_html_e( 'Status', 'gallus-qr' ); ?></th>
@@ -160,6 +195,11 @@ class Gallus_QR_Admin_Stats {
 										<button type="button" class="button button-small gqr-save-title"><?php esc_html_e( 'Save', 'gallus-qr' ); ?></button>
 									</span>
 								</td>
+								<?php if ( $show_owner_col ) : ?>
+									<td class="gqr-owner">
+										<?php echo esc_html( $this->owner_label( isset( $code->user_id ) ? (int) $code->user_id : 0 ) ); ?>
+									</td>
+								<?php endif; ?>
 								<td>
 									<?php if ( $is_tracked ) : ?>
 										<a href="<?php echo esc_url( $short ); ?>" target="_blank" rel="noopener">
@@ -274,16 +314,54 @@ class Gallus_QR_Admin_Stats {
 	}
 
 	/**
-	 * Site-wide overview panels for the selected range: hour-of-day heatmap,
-	 * top countries, and OS/browser splits (all codes combined).
+	 * User IDs that own codes → display labels for the admin Owner filter.
 	 *
-	 * @param string $since MySQL datetime (UTC).
+	 * @return array<int,string> user_id => label
 	 */
-	private function render_overview( $since ) {
-		$hourly    = $this->db->get_hourly_breakdown( 0, $since );
-		$countries = $this->db->get_country_breakdown( 0, $since, 8 );
-		$os        = array_slice( $this->db->get_column_breakdown( 0, $since, 'os' ), 0, 6, true );
-		$browsers  = array_slice( $this->db->get_column_breakdown( 0, $since, 'browser' ), 0, 6, true );
+	private function owner_filter_choices() {
+		$out = array();
+		foreach ( $this->db->get_code_owner_ids() as $uid ) {
+			$out[ $uid ] = $this->owner_label( $uid );
+		}
+		asort( $out, SORT_NATURAL | SORT_FLAG_CASE );
+		return $out;
+	}
+
+	/**
+	 * Display name for a code owner.
+	 *
+	 * @param int $user_id
+	 * @return string
+	 */
+	private function owner_label( $user_id ) {
+		$user_id = (int) $user_id;
+		if ( $user_id < 1 ) {
+			return __( 'Unknown', 'gallus-qr' );
+		}
+		$user = get_userdata( $user_id );
+		if ( ! $user ) {
+			return __( 'Former member', 'gallus-qr' );
+		}
+		$label = $user->display_name ? $user->display_name : $user->user_login;
+		if ( (int) get_current_user_id() === $user_id ) {
+			/* translators: %s: the current user's display name. */
+			return sprintf( __( '%s (you)', 'gallus-qr' ), $label );
+		}
+		return $label;
+	}
+
+	/**
+	 * Overview panels for the selected range: hour-of-day heatmap, top
+	 * countries, and OS/browser splits (scoped to the owner filter).
+	 *
+	 * @param string   $since MySQL datetime (UTC).
+	 * @param int|null $owner null = all codes; int = that owner's codes.
+	 */
+	private function render_overview( $since, $owner = null ) {
+		$hourly    = $this->db->get_hourly_breakdown( 0, $since, $owner );
+		$countries = $this->db->get_country_breakdown( 0, $since, 8, $owner );
+		$os        = array_slice( $this->db->get_column_breakdown( 0, $since, 'os', $owner ), 0, 6, true );
+		$browsers  = array_slice( $this->db->get_column_breakdown( 0, $since, 'browser', $owner ), 0, 6, true );
 
 		// Shift the UTC hour buckets into site-local hours for display.
 		$offset = (int) round( wp_timezone()->getOffset( new DateTime( 'now', wp_timezone() ) ) / HOUR_IN_SECONDS );

@@ -417,9 +417,23 @@
 	min-height: 2px;
 }
 
-/* Date-range selector above the stats table. */
+/* Date-range / owner filters above the stats table. */
 .gqr-range-form {
 	margin: 1rem 0 0.5rem;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1rem 1.5rem;
+	align-items: center;
+}
+
+.gqr-range-form label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.gqr-stats-table .gqr-owner {
+	white-space: nowrap;
 }
 
 /* Inline rename / destination edit controls in the stats table. */

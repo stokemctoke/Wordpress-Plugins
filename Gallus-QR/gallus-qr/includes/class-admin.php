@@ -104,7 +104,7 @@ class Gallus_QR_Admin {
 		if ( ! $this->is_plugin_screen()
 			|| ! current_user_can( Gallus_QR_Settings::capability() )
 			|| get_option( 'gallus_qr_donate_dismissed' )
-			|| $this->db->count_codes() < self::DONATE_NUDGE_AFTER ) {
+			|| $this->db->count_codes( Gallus_QR_Settings::ownership_scope() ) < self::DONATE_NUDGE_AFTER ) {
 			return;
 		}
 
@@ -119,7 +119,7 @@ class Gallus_QR_Admin {
 				printf(
 					/* translators: %d: number of saved codes. */
 					esc_html__( 'You’ve made %d QR codes with Gallus QR — brilliant! It’s free and always will be, but if it’s been useful, a coffee keeps the updates coming.', 'gallus-qr' ),
-					(int) $this->db->count_codes()
+					(int) $this->db->count_codes( Gallus_QR_Settings::ownership_scope() )
 				);
 				?>
 			</p>
@@ -269,7 +269,7 @@ class Gallus_QR_Admin {
 
 			// Map slug => stored design so re-downloads match the original.
 			$designs = array();
-			foreach ( $this->db->get_codes_with_counts() as $code ) {
+			foreach ( $this->db->get_codes_with_counts( Gallus_QR_Settings::request_owner_scope() ) as $code ) {
 				if ( ! empty( $code->design ) ) {
 					$decoded = json_decode( $code->design, true );
 					if ( is_array( $decoded ) ) {

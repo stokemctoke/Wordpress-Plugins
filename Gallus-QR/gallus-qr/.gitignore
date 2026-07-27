@@ -3,3 +3,4 @@ vendor/
 composer.lock
 package-lock.json
 .phpunit.result.cache
+.wp-env.override.json

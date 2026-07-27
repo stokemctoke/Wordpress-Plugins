@@ -210,7 +210,7 @@ class Gallus_QR_Admin_Tools {
 		}
 
 		$code = $this->db->get_code_by_id( $id );
-		if ( ! $code ) {
+		if ( ! $code || ! Gallus_QR_Settings::can_access_code( $code ) ) {
 			wp_die( esc_html__( 'No such QR code.', 'gallus-qr' ) );
 		}
 

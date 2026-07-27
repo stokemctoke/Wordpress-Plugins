@@ -64,6 +64,12 @@ class Gallus_QR_REST {
 							'required'          => false,
 							'sanitize_callback' => 'sanitize_text_field',
 						),
+						'owner'    => array(
+							'type'              => 'string',
+							'required'          => false,
+							'description'       => 'Admin filter: all | me | {user_id}. Ignored for non-admins.',
+							'sanitize_callback' => 'sanitize_text_field',
+						),
 					),
 				),
 				array(
@@ -283,8 +289,12 @@ class Gallus_QR_REST {
 		$page     = (int) $request->get_param( 'page' );
 		$per_page = (int) $request->get_param( 'per_page' );
 		$search   = (string) $request->get_param( 'search' );
+		$owner    = $request->get_param( 'owner' );
+		$scope    = Gallus_QR_Settings::resolve_owner_filter(
+			( null === $owner || '' === $owner ) ? null : (string) $owner
+		);
 
-		$result = $this->db->get_codes_page( $page, $per_page, $search );
+		$result = $this->db->get_codes_page( $page, $per_page, $search, $scope );
 
 		$items = array();
 		foreach ( $result['items'] as $code ) {
@@ -305,7 +315,7 @@ class Gallus_QR_REST {
 	 */
 	public function get_code( WP_REST_Request $request ) {
 		$code = $this->db->get_code_by_id( (int) $request['id'] );
-		if ( ! $code ) {
+		if ( ! $code || ! Gallus_QR_Settings::can_access_code( $code ) ) {
 			return $this->not_found();
 		}
 		return new WP_REST_Response( $this->format_code( $code ) );
@@ -423,7 +433,7 @@ class Gallus_QR_REST {
 	public function update_code( WP_REST_Request $request ) {
 		$id   = (int) $request['id'];
 		$code = $this->db->get_code_by_id( $id );
-		if ( ! $code ) {
+		if ( ! $code || ! Gallus_QR_Settings::can_access_code( $code ) ) {
 			return $this->not_found();
 		}
 
@@ -478,7 +488,7 @@ class Gallus_QR_REST {
 	public function delete_code( WP_REST_Request $request ) {
 		$id   = (int) $request['id'];
 		$code = $this->db->get_code_by_id( $id );
-		if ( ! $code ) {
+		if ( ! $code || ! Gallus_QR_Settings::can_access_code( $code ) ) {
 			return $this->not_found();
 		}
 
@@ -634,6 +644,7 @@ class Gallus_QR_REST {
 			'destination_b' => ! empty( $code->destination_b ) ? $code->destination_b : '',
 			'switch_at'     => ! empty( $code->switch_at ) ? $code->switch_at : null,
 			'ab_split'      => isset( $code->ab_split ) ? (int) $code->ab_split : 50,
+			'user_id'       => isset( $code->user_id ) ? (int) $code->user_id : 0,
 			'created_at'    => $code->created_at,
 			'total_scans'   => isset( $code->total_scans ) ? (int) $code->total_scans : null,
 		);
