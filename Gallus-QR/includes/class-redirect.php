@@ -56,8 +56,19 @@ class Gallus_QR_Redirect {
 	 * Otherwise do nothing and let WordPress render the page as normal.
 	 */
 	public function maybe_redirect() {
+		// Only a real /qr/{slug} hit counts. The `query_vars` filter registers a
+		// PUBLIC query var, and WordPress fills those from $_GET and $_POST
+		// before it ever looks at the rewrite match — so without this guard,
+		// ?gallus_qr_slug=x works on every URL on the site, over GET and POST.
+		// That would sidestep any edge rule scoped to /qr/*, hang the redirector
+		// off arbitrary legitimate-looking URLs, and let ?…&cb=<random> mint
+		// unlimited guaranteed cache misses that each reach origin and write.
+		if ( ! $this->matched_qr_rewrite() ) {
+			return;
+		}
+
 		$slug = get_query_var( 'gallus_qr_slug' );
-		if ( '' === $slug || null === $slug ) {
+		if ( ! is_string( $slug ) || '' === $slug ) {
 			return;
 		}
 
@@ -136,6 +147,20 @@ class Gallus_QR_Redirect {
 		nocache_headers();
 		wp_redirect( $this->resolve_destination( $code, $now, $variant ), 302 );
 		exit;
+	}
+
+	/**
+	 * Did this request arrive via the ^qr/ rewrite rule, rather than by someone
+	 * appending our query var to an arbitrary URL?
+	 *
+	 * @return bool
+	 */
+	private function matched_qr_rewrite() {
+		if ( empty( $GLOBALS['wp'] ) || ! isset( $GLOBALS['wp']->matched_rule ) ) {
+			return false;
+		}
+
+		return 0 === strpos( (string) $GLOBALS['wp']->matched_rule, '^qr/' );
 	}
 
 	/**

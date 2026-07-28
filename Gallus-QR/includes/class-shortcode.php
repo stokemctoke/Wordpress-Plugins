@@ -145,15 +145,44 @@ class Gallus_QR_Shortcode {
 	 * @return bool
 	 */
 	private function can_embed( $code ) {
-		$type    = ! empty( $code->payload_type ) ? $code->payload_type : 'url';
+		$type  = ! empty( $code->payload_type ) ? $code->payload_type : 'url';
+		$owner = isset( $code->user_id ) ? (int) $code->user_id : 0;
+
+		// A trackable URL code embeds only its /qr/ short link, which is public
+		// by design. Everything else — the library types, and a NON-trackable
+		// URL code — puts its payload verbatim into the markup, so the raw WiFi
+		// password, vCard details or private destination URL would be published.
+		$exposes_payload = ( 'url' !== $type ) || ( (int) $code->trackable !== 1 );
+
 		$allowed = true;
 
-		if ( 'url' !== $type ) {
+		if ( $exposes_payload ) {
 			$post_id = get_the_ID();
 			$author  = $post_id ? (int) get_post_field( 'post_author', $post_id ) : 0;
-			$owner   = isset( $code->user_id ) ? (int) $code->user_id : 0;
 
 			$allowed = ( $author > 0 && $owner > 0 && $author === $owner );
+
+			// Post authorship is only meaningful when WordPress picked the post.
+			// In an editor or REST render the CALLER names it —
+			// WP_REST_Block_Renderer_Controller takes a post_id parameter and
+			// runs setup_postdata() on it — so an Editor could point the
+			// renderer at the owner's post and read the payload back out of the
+			// response. There the actor has to own the code as well.
+			if ( $allowed && ( ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || is_admin() ) ) {
+				$allowed = ( get_current_user_id() === $owner );
+			}
+		}
+
+		// A code that is paused or past its expiry is not live, and must not
+		// render as though it were — the redirect handler already refuses it.
+		if ( $allowed ) {
+			$now = current_time( 'mysql', true );
+
+			if ( isset( $code->status ) && 'paused' === $code->status ) {
+				$allowed = false;
+			} elseif ( ! empty( $code->expires_at ) && $code->expires_at <= $now ) {
+				$allowed = false;
+			}
 		}
 
 		/**

@@ -95,6 +95,85 @@ class Test_Gallus_QR_Embed_Rules extends WP_UnitTestCase {
 		$this->assertSame( '', $this->shortcode->render_shortcode( array( 'slug' => 'no-such-slug' ) ) );
 	}
 
+	public function test_editor_cannot_read_a_payload_via_an_admin_side_render() {
+		// WP_REST_Block_Renderer_Controller lets the caller name the post it
+		// renders against, so "the post author owns this code" proves nothing
+		// there — an Editor could point it at the owner's post. In an
+		// admin/REST render the actor must own the code too.
+		$owner  = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		$editor = self::factory()->user->create( array( 'role' => 'editor' ) );
+
+		$slug = $this->code_owned_by( $owner, 'wifi', 'WIFI:T:WPA;S:HomeNet;P:hunter2;;' );
+		$this->on_post_by( $owner );
+
+		wp_set_current_user( $editor );
+		set_current_screen( 'edit-post' );
+
+		$html = $this->shortcode->render_shortcode( array( 'slug' => $slug ) );
+
+		set_current_screen( 'front' );
+
+		$this->assertSame( '', $html );
+		$this->assertStringNotContainsString( 'hunter2', $html );
+	}
+
+	public function test_owner_can_still_render_their_own_payload_in_the_editor() {
+		$owner = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+
+		$slug = $this->code_owned_by( $owner, 'wifi', 'WIFI:T:WPA;S:HomeNet;P:hunter2;;' );
+		$this->on_post_by( $owner );
+
+		wp_set_current_user( $owner );
+		set_current_screen( 'edit-post' );
+
+		$html = $this->shortcode->render_shortcode( array( 'slug' => $slug ) );
+
+		set_current_screen( 'front' );
+
+		$this->assertStringContainsString( 'gallus-qr-embed', $html );
+	}
+
+	public function test_non_trackable_url_code_does_not_leak_its_destination() {
+		// A non-trackable URL code embeds the destination verbatim rather than
+		// a /qr/ link, so it needs the same ownership rule as the library types.
+		$owner    = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		$intruder = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+
+		wp_set_current_user( $owner );
+		$slug = $this->db->insert_code( 'Private', 'https://example.com/unlisted-doc', false, '', 'url', '' );
+
+		$this->on_post_by( $intruder );
+
+		$html = $this->shortcode->render_shortcode( array( 'slug' => $slug ) );
+
+		$this->assertSame( '', $html );
+		$this->assertStringNotContainsString( 'unlisted-doc', $html );
+	}
+
+	public function test_paused_codes_do_not_render_as_live() {
+		global $wpdb;
+
+		$owner = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		$slug  = $this->code_owned_by( $owner, 'url', 'https://example.com/page' );
+		$this->on_post_by( $owner );
+
+		$wpdb->update( $this->db->codes_table(), array( 'status' => 'paused' ), array( 'slug' => $slug ) );
+
+		$this->assertSame( '', $this->shortcode->render_shortcode( array( 'slug' => $slug ) ) );
+	}
+
+	public function test_expired_codes_do_not_render_as_live() {
+		global $wpdb;
+
+		$owner = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		$slug  = $this->code_owned_by( $owner, 'url', 'https://example.com/page' );
+		$this->on_post_by( $owner );
+
+		$wpdb->update( $this->db->codes_table(), array( 'expires_at' => '2000-01-01 00:00:00' ), array( 'slug' => $slug ) );
+
+		$this->assertSame( '', $this->shortcode->render_shortcode( array( 'slug' => $slug ) ) );
+	}
+
 	public function test_filter_can_override_the_embed_decision() {
 		$owner    = self::factory()->user->create( array( 'role' => 'subscriber' ) );
 		$intruder = self::factory()->user->create( array( 'role' => 'subscriber' ) );
