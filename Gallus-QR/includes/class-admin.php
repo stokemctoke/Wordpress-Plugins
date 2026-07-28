@@ -269,8 +269,13 @@ class Gallus_QR_Admin {
 			);
 
 			// Map slug => stored design so re-downloads match the original.
+			// Scoped to the page being rendered: this array is inlined into the
+			// document, so mapping every code would ship the whole library's
+			// designs (logos included) on every stats page load.
+			$page = $this->stats->current_page();
+
 			$designs = array();
-			foreach ( $this->db->get_codes_with_counts( Gallus_QR_Settings::request_owner_scope() ) as $code ) {
+			foreach ( $page['codes'] as $code ) {
 				if ( ! empty( $code->design ) ) {
 					$decoded = json_decode( $code->design, true );
 					if ( is_array( $decoded ) ) {

@@ -97,7 +97,11 @@ class Gallus_QR_Database {
 			PRIMARY KEY  (id),
 			KEY code_id (code_id),
 			KEY scanned_at (scanned_at),
-			KEY code_scanned (code_id,scanned_at)
+			KEY code_scanned (code_id,scanned_at),
+			KEY scanned_country (scanned_at,country),
+			KEY scanned_device (scanned_at,device),
+			KEY scanned_os (scanned_at,os),
+			KEY scanned_browser (scanned_at,browser)
 		) {$charset_collate};";
 
 		$sql_presets = "CREATE TABLE {$presets} (
@@ -199,7 +203,7 @@ class Gallus_QR_Database {
 	 *
 	 * @return int 0 when the site somehow has no administrator.
 	 */
-	private function first_admin_id() {
+	public function first_admin_id() {
 		$admins = get_users(
 			array(
 				'role'    => 'administrator',
@@ -435,6 +439,86 @@ class Gallus_QR_Database {
 			$formats,
 			array( '%d' )
 		);
+	}
+
+	/**
+	 * Hand one user's codes and presets to another. Used when a member is
+	 * deleted: leaving rows pointed at a freed user ID means whoever is issued
+	 * that ID next inherits them.
+	 *
+	 * @param int $from_user_id
+	 * @param int $to_user_id
+	 * @return int Rows moved.
+	 */
+	public function reassign_owner( $from_user_id, $to_user_id ) {
+		global $wpdb;
+
+		$from = (int) $from_user_id;
+		$to   = (int) $to_user_id;
+
+		if ( $from < 1 || $to < 1 || $from === $to ) {
+			return 0;
+		}
+
+		$moved = 0;
+
+		foreach ( array( $this->codes_table(), $this->presets_table() ) as $table ) {
+			$rows = $wpdb->query(
+				$wpdb->prepare(
+					"UPDATE {$table} SET user_id = %d WHERE user_id = %d",
+					$to,
+					$from
+				)
+			);
+
+			if ( $rows > 0 ) {
+				$moved += (int) $rows;
+			}
+		}
+
+		return $moved;
+	}
+
+	/**
+	 * Delete everything a user owns — their codes, those codes' scan rows, and
+	 * their presets. Only reached when a filter explicitly opts into deletion
+	 * over reassignment.
+	 *
+	 * @param int $user_id
+	 * @return int Codes removed.
+	 */
+	public function delete_owner_rows( $user_id ) {
+		global $wpdb;
+
+		$user_id = (int) $user_id;
+
+		if ( $user_id < 1 ) {
+			return 0;
+		}
+
+		$codes   = $this->codes_table();
+		$scans   = $this->scans_table();
+		$presets = $this->presets_table();
+
+		// Scans first: the reverse order would orphan rows pointing at a
+		// code_id that a later AUTO_INCREMENT could reissue.
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$scans}
+				 WHERE code_id IN ( SELECT id FROM ( SELECT id FROM {$codes} WHERE user_id = %d ) AS doomed )",
+				$user_id
+			)
+		);
+
+		$removed = $wpdb->query(
+			$wpdb->prepare( "DELETE FROM {$codes} WHERE user_id = %d", $user_id )
+		);
+
+		$wpdb->query(
+			$wpdb->prepare( "DELETE FROM {$presets} WHERE user_id = %d", $user_id )
+		);
+
+		return $removed > 0 ? (int) $removed : 0;
 	}
 
 	/**
@@ -770,6 +854,42 @@ class Gallus_QR_Database {
 	}
 
 	/**
+	 * Codes for an owner, newest first, WITHOUT the lifetime-total join.
+	 *
+	 * get_codes_with_counts() aggregates the entire scans table to produce
+	 * total_scans, and the screens that render a list of codes do not read that
+	 * column — they show per-range figures fetched separately. Paying for a
+	 * table-wide LEFT JOIN + GROUP BY and discarding the result is the single
+	 * most expensive thing the stats page used to do, and it had no LIMIT.
+	 *
+	 * @param int|null $owner_id null = every owner (admins only).
+	 * @param int      $limit    0 = no limit (use only where the set is known small).
+	 * @param int      $offset
+	 * @return array
+	 */
+	public function get_codes_owned( $owner_id = null, $limit = 0, $offset = 0 ) {
+		global $wpdb;
+
+		$codes = $this->codes_table();
+		$owner = $this->owner_sql( $owner_id );
+		$limit = max( 0, (int) $limit );
+
+		if ( $limit < 1 ) {
+			return $wpdb->get_results(
+				"SELECT * FROM {$codes} WHERE 1=1{$owner} ORDER BY created_at DESC"
+			);
+		}
+
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM {$codes} WHERE 1=1{$owner} ORDER BY created_at DESC LIMIT %d OFFSET %d",
+				$limit,
+				max( 0, (int) $offset )
+			)
+		);
+	}
+
+	/**
 	 * One page of codes (newest first, each with total_scans), plus the total
 	 * row count for pagination headers.
 	 *
@@ -942,11 +1062,25 @@ class Gallus_QR_Database {
 		}
 
 		// Legacy rows (pre-v2): parse the stored UA on the fly.
+		//
+		// Bounded, because this is a raw row fetch rather than an aggregate: on
+		// an "All time" range with $code_id = 0 it selected every legacy scan on
+		// the site into PHP, twice per stats page load (os + browser). New rows
+		// have the parsed columns filled in and never reach here, so this set
+		// only shrinks over time.
+		/**
+		 * Filter how many pre-v2 scan rows are parsed in PHP per breakdown.
+		 *
+		 * @param int $rows
+		 */
+		$legacy_cap = max( 1, (int) apply_filters( 'gallus_qr_legacy_ua_scan_limit', 5000 ) );
+
 		$uas = $wpdb->get_col(
 			$wpdb->prepare(
 				"SELECT user_agent FROM {$scans}
-				 WHERE scanned_at >= %s AND {$column} = ''{$code_where}",
-				array_merge( array( $since ), $code_args )
+				 WHERE scanned_at >= %s AND {$column} = ''{$code_where}
+				 LIMIT %d",
+				array_merge( array( $since ), $code_args, array( $legacy_cap ) )
 			)
 		);
 		foreach ( $uas as $ua ) {

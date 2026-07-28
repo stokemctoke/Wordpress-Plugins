@@ -85,13 +85,56 @@ class Gallus_QR_Admin_Stats {
 	 *
 	 * Admins also get an owner filter (all / mine / specific user).
 	 */
+	/**
+	 * The slice of codes the Scan Stats screen is currently showing.
+	 *
+	 * Shared with the asset enqueue, which builds the slug => design map for
+	 * re-downloads: that map is inlined into the page with wp_localize_script,
+	 * so it has to cover this page's rows and no more. Rendering every code's
+	 * design regardless of pagination would put the whole library — including
+	 * every embedded logo — into every stats page load.
+	 *
+	 * Each row also costs four further queries (range summary, two breakdowns,
+	 * daily counts), so the list is bounded rather than growing with the number
+	 * of codes on the site. An administrator's default view spans every user's
+	 * codes, and any one of those users can create more.
+	 *
+	 * @return array{codes:array,total:int,pages:int,paged:int,per_page:int}
+	 */
+	public function current_page() {
+		$owner = Gallus_QR_Settings::request_owner_scope();
+
+		$per_page = (int) apply_filters( 'gallus_qr_stats_per_page', 20 );
+		$per_page = max( 1, min( 200, $per_page ) );
+
+		$total = (int) $this->db->count_codes( $owner );
+		$pages = max( 1, (int) ceil( $total / $per_page ) );
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$paged = isset( $_GET['gqr_paged'] ) ? absint( wp_unslash( $_GET['gqr_paged'] ) ) : 1;
+		$paged = max( 1, min( $pages, $paged ) );
+
+		return array(
+			'codes'    => $this->db->get_codes_owned( $owner, $per_page, ( $paged - 1 ) * $per_page ),
+			'total'    => $total,
+			'pages'    => $pages,
+			'paged'    => $paged,
+			'per_page' => $per_page,
+		);
+	}
+
 	public function render_page() {
 		$can_filter = Gallus_QR_Settings::can_manage_all();
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$owner_raw = isset( $_GET['gqr_owner'] ) ? sanitize_text_field( wp_unslash( $_GET['gqr_owner'] ) ) : ( $can_filter ? 'all' : 'me' );
 		$owner     = Gallus_QR_Settings::resolve_owner_filter( $owner_raw );
-		$codes     = $this->db->get_codes_with_counts( $owner );
 		$ranges    = $this->ranges();
+
+		$page  = $this->current_page();
+		$codes = $page['codes'];
+		$total = $page['total'];
+		$pages = $page['pages'];
+		$paged = $page['paged'];
 
 		// Selected range (default 30 days).
 		$range_key = isset( $_GET['gqr_range'] ) ? sanitize_key( $_GET['gqr_range'] ) : '30'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -305,6 +348,43 @@ class Gallus_QR_Admin_Stats {
 						<?php endforeach; ?>
 					</tbody>
 				</table>
+
+				<?php if ( $pages > 1 ) : ?>
+					<div class="tablenav gqr-pagination">
+						<div class="tablenav-pages">
+							<span class="displaying-num">
+								<?php
+								printf(
+									/* translators: %s: number of codes. */
+									esc_html( _n( '%s code', '%s codes', $total, 'gallus-qr' ) ),
+									esc_html( number_format_i18n( $total ) )
+								);
+								?>
+							</span>
+							<?php
+							echo wp_kses_post(
+								paginate_links(
+									array(
+										// %#% is paginate_links' page-number placeholder.
+										// add_query_arg() does not URL-encode values,
+										// so it survives; esc_url_raw() here would
+										// mangle it. This is core's own pattern in
+										// WP_List_Table::pagination(), and
+										// paginate_links() esc_url()s each href it emits.
+										'base'      => add_query_arg( 'gqr_paged', '%#%' ),
+										'format'    => '',
+										'prev_text' => '&laquo;',
+										'next_text' => '&raquo;',
+										'total'     => $pages,
+										'current'   => $paged,
+									)
+								)
+							);
+							?>
+						</div>
+					</div>
+				<?php endif; ?>
+
 				<p class="gqr-help">
 					<?php esc_html_e( 'Re-download (PNG/SVG) regenerates the code using the design you saved it with. Codes saved before v0.5.0 come out plain black-on-white.', 'gallus-qr' ); ?>
 				</p>

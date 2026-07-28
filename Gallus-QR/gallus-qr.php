@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Handy constants so other files can find themselves and bust asset caches.
 define( 'GALLUS_QR_VERSION', '2.1.0' );
-define( 'GALLUS_QR_DB_VERSION', '6' );                       // bump when the schema changes
+define( 'GALLUS_QR_DB_VERSION', '7' );                       // bump when the schema changes
 define( 'GALLUS_QR_PATH', plugin_dir_path( __FILE__ ) );   // /…/gallus-qr/
 define( 'GALLUS_QR_URL', plugin_dir_url( __FILE__ ) );      // https://…/gallus-qr/
 
@@ -40,6 +40,7 @@ require_once GALLUS_QR_PATH . 'includes/class-shortcode.php';
 require_once GALLUS_QR_PATH . 'includes/class-cron.php';
 require_once GALLUS_QR_PATH . 'includes/class-dashboard-widget.php';
 require_once GALLUS_QR_PATH . 'includes/class-integrations.php';
+require_once GALLUS_QR_PATH . 'includes/class-user-lifecycle.php';
 
 /**
  * Activation: create the tables, grant the plugin capability to admins, and
@@ -86,6 +87,7 @@ add_action( 'plugins_loaded', static function () {
 	( new Gallus_QR_Cron( $db ) )->init();
 	( new Gallus_QR_Dashboard_Widget( $db ) )->init();
 	( new Gallus_QR_Integrations() )->init();
+	( new Gallus_QR_User_Lifecycle( $db ) )->init();
 	$tools->init();
 	$settings->init();
 } );
