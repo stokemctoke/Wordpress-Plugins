@@ -27,9 +27,25 @@ class Presence {
 		}
 	}
 
+	/**
+	 * "Away" means a chat user who has stepped out — NOT someone who has never
+	 * opened the chat at all. Those accounts have no activity meta, so a naive
+	 * `time() - 0 > threshold` made every user on the site permanently away and
+	 * therefore permanently emailable, which is the amplifier behind the room
+	 * invite → implicit DM mention → site-sent mail chain.
+	 *
+	 * @param int $user_id
+	 * @return bool
+	 */
 	public function is_away( $user_id ) {
+		$last = (int) get_user_meta( $user_id, self::META_KEY, true );
+
+		if ( $last <= 0 ) {
+			return false;
+		}
+
 		$threshold = MINUTE_IN_SECONDS * (int) $this->settings->get( 'away_threshold_min' );
-		$last      = (int) get_user_meta( $user_id, self::META_KEY, true );
+
 		return ( time() - $last ) > $threshold;
 	}
 }

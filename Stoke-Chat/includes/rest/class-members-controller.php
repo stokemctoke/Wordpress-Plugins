@@ -64,7 +64,12 @@ class Members_Controller extends Base_Controller {
 	}
 
 	public function list_members( $request ) {
-		$result = $this->get_visible_room( (int) $request['room_id'] );
+		// Membership requires membership to read, matching get_messages().
+		// get_visible_room() also admits any public room, which let a
+		// non-member pull a full roster — names, roles and join times — for
+		// every open room, and that composes with user search into a decent
+		// picture of who is on the site.
+		$result = $this->get_member_room( (int) $request['room_id'] );
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
