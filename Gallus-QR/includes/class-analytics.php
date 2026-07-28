@@ -82,11 +82,22 @@ class Gallus_QR_Analytics {
 	public static function detect_country() {
 		$headers = apply_filters(
 			'gallus_qr_country_header',
-			array( 'HTTP_CF_IPCOUNTRY', 'GEOIP_COUNTRY_CODE', 'HTTP_X_COUNTRY_CODE' )
+			array( 'HTTP_CF_IPCOUNTRY', 'GEOIP_COUNTRY_CODE' )
 		);
+
+		// Anything HTTP_* is a request header, so it is whatever the visitor
+		// chose to send unless a proxy we control put it there — the same trust
+		// question X-Forwarded-For answers, and it must be answered the same way
+		// or country data is writable by anyone who can reach a /qr/ link.
+		// Names without the HTTP_ prefix (GEOIP_COUNTRY_CODE from mod_geoip) are
+		// set by the server itself and cannot be spoofed over the wire.
+		$trust_headers = Gallus_QR_Request::behind_trusted_proxy();
 
 		foreach ( (array) $headers as $header ) {
 			if ( empty( $_SERVER[ $header ] ) ) {
+				continue;
+			}
+			if ( 0 === strpos( $header, 'HTTP_' ) && ! $trust_headers ) {
 				continue;
 			}
 			$code = strtoupper( sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) ) );

@@ -33,7 +33,7 @@ class Test_Gallus_QR_Scan_Integrity extends WP_UnitTestCase {
 
 	public function test_direct_public_request_uses_remote_addr() {
 		$_SERVER['REMOTE_ADDR'] = '203.0.113.9';
-		$this->assertSame( '203.0.113.9', $this->invoke( 'client_ip' ) );
+		$this->assertSame( '203.0.113.9', Gallus_QR_Request::client_ip() );
 	}
 
 	public function test_forwarded_header_is_ignored_from_an_untrusted_peer() {
@@ -41,7 +41,7 @@ class Test_Gallus_QR_Scan_Integrity extends WP_UnitTestCase {
 		$_SERVER['REMOTE_ADDR']          = '203.0.113.9';
 		$_SERVER['HTTP_X_FORWARDED_FOR'] = '198.51.100.7';
 
-		$this->assertSame( '203.0.113.9', $this->invoke( 'client_ip' ) );
+		$this->assertSame( '203.0.113.9', Gallus_QR_Request::client_ip() );
 	}
 
 	public function test_forwarded_header_is_used_behind_a_local_proxy() {
@@ -49,26 +49,53 @@ class Test_Gallus_QR_Scan_Integrity extends WP_UnitTestCase {
 		$_SERVER['REMOTE_ADDR']          = '127.0.0.1';
 		$_SERVER['HTTP_X_FORWARDED_FOR'] = '198.51.100.7';
 
-		$this->assertSame( '198.51.100.7', $this->invoke( 'client_ip' ) );
+		$this->assertSame( '198.51.100.7', Gallus_QR_Request::client_ip() );
 	}
 
-	public function test_first_parsable_forwarded_entry_wins() {
+	public function test_client_supplied_prefix_cannot_forge_the_address() {
+		// nginx's $proxy_add_x_forwarded_for APPENDS the real peer, so anything
+		// the visitor sent themselves ends up on the left. Reading left-to-right
+		// would hand them a free identity on every request.
+		$_SERVER['REMOTE_ADDR']          = '127.0.0.1';
+		$_SERVER['HTTP_X_FORWARDED_FOR'] = '1.2.3.4, 203.0.113.9';
+
+		$this->assertSame( '203.0.113.9', Gallus_QR_Request::client_ip() );
+	}
+
+	public function test_internal_proxy_hops_are_walked_through() {
 		$_SERVER['REMOTE_ADDR']          = '10.0.0.5';
 		$_SERVER['HTTP_X_FORWARDED_FOR'] = ' 198.51.100.7 , 10.0.0.5 ';
 
-		$this->assertSame( '198.51.100.7', $this->invoke( 'client_ip' ) );
+		$this->assertSame( '198.51.100.7', Gallus_QR_Request::client_ip() );
+	}
+
+	public function test_ipv4_mapped_public_peer_is_not_trusted() {
+		// A dual-stack listener reports ordinary IPv4 visitors in this form.
+		// filter_var's NO_RES_RANGE flag calls the whole ::ffff:0:0/96 block
+		// reserved, which would make every host on the internet a trusted proxy.
+		$_SERVER['REMOTE_ADDR']          = '::ffff:203.0.113.9';
+		$_SERVER['HTTP_X_FORWARDED_FOR'] = '198.51.100.7';
+
+		$this->assertSame( '203.0.113.9', Gallus_QR_Request::client_ip() );
+	}
+
+	public function test_ipv4_mapped_private_peer_is_still_trusted() {
+		$_SERVER['REMOTE_ADDR']          = '::ffff:10.0.0.5';
+		$_SERVER['HTTP_X_FORWARDED_FOR'] = '198.51.100.7';
+
+		$this->assertSame( '198.51.100.7', Gallus_QR_Request::client_ip() );
 	}
 
 	public function test_garbage_forwarded_values_fall_back_to_the_peer() {
 		$_SERVER['REMOTE_ADDR']          = '127.0.0.1';
 		$_SERVER['HTTP_X_FORWARDED_FOR'] = 'not-an-ip, <script>';
 
-		$this->assertSame( '127.0.0.1', $this->invoke( 'client_ip' ) );
+		$this->assertSame( '127.0.0.1', Gallus_QR_Request::client_ip() );
 	}
 
 	public function test_invalid_remote_addr_yields_empty_string() {
 		$_SERVER['REMOTE_ADDR'] = 'definitely-not-an-ip';
-		$this->assertSame( '', $this->invoke( 'client_ip' ) );
+		$this->assertSame( '', Gallus_QR_Request::client_ip() );
 	}
 
 	public function test_hash_is_stable_and_not_the_raw_address() {

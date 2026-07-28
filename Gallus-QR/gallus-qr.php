@@ -27,6 +27,7 @@ define( 'GALLUS_QR_URL', plugin_dir_url( __FILE__ ) );      // https://…/gallu
 
 // Load the classes.
 require_once GALLUS_QR_PATH . 'includes/class-settings.php';
+require_once GALLUS_QR_PATH . 'includes/class-request.php';
 require_once GALLUS_QR_PATH . 'includes/class-payloads.php';
 require_once GALLUS_QR_PATH . 'includes/class-analytics.php';
 require_once GALLUS_QR_PATH . 'includes/class-database.php';

@@ -243,74 +243,13 @@ class Gallus_QR_Redirect {
 
 	/**
 	 * Salted SHA-256 of the client IP — enough for unique-ish counts, never the
-	 * raw address.
+	 * raw address. Resolution and proxy trust live in Gallus_QR_Request so the
+	 * redirect handler and the analytics country lookup cannot disagree.
 	 *
 	 * @return string
 	 */
 	private function client_ip_hash() {
-		return hash( 'sha256', $this->client_ip() . wp_salt( 'auth' ) );
-	}
-
-	/**
-	 * The client's IP address.
-	 *
-	 * X-Forwarded-For is only consulted when the request actually reached us
-	 * through a trusted proxy — anyone can send that header, so trusting it
-	 * blindly lets a visitor forge a fresh "unique visitor" on every request.
-	 * Defaults cover the usual CloudPanel/nginx-in-front setup (the request
-	 * arrives from loopback or a private address); sites behind a public-facing
-	 * CDN should add its ranges via the filter below.
-	 *
-	 * @return string '' when no valid address could be determined.
-	 */
-	private function client_ip() {
-		$remote = isset( $_SERVER['REMOTE_ADDR'] )
-			? trim( sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) )
-			: '';
-
-		if ( ! filter_var( $remote, FILTER_VALIDATE_IP ) ) {
-			return '';
-		}
-
-		if ( empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) || ! $this->is_trusted_proxy( $remote ) ) {
-			return $remote;
-		}
-
-		// Left-most entry is the original client; take the first parsable one.
-		$forwarded = explode( ',', sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) );
-		foreach ( $forwarded as $candidate ) {
-			$candidate = trim( $candidate );
-			if ( filter_var( $candidate, FILTER_VALIDATE_IP ) ) {
-				return $candidate;
-			}
-		}
-
-		return $remote;
-	}
-
-	/**
-	 * Does this address belong to a reverse proxy we're willing to believe?
-	 *
-	 * @param string $ip Validated IP address.
-	 * @return bool
-	 */
-	private function is_trusted_proxy( $ip ) {
-		// Loopback and private/reserved ranges: a request arriving from one of
-		// these came through our own front-end server, not off the internet.
-		$is_private = ! filter_var(
-			$ip,
-			FILTER_VALIDATE_IP,
-			FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
-		);
-
-		/**
-		 * Filter whether X-Forwarded-For from this address should be trusted.
-		 * Add your CDN's egress ranges here if it fronts the site publicly.
-		 *
-		 * @param bool   $is_private Whether the address is loopback/private.
-		 * @param string $ip         The immediate peer address.
-		 */
-		return (bool) apply_filters( 'gallus_qr_is_trusted_proxy', $is_private, $ip );
+		return Gallus_QR_Request::client_ip_hash();
 	}
 
 	/**
