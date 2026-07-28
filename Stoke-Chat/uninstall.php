@@ -19,8 +19,10 @@ delete_metadata( 'user', 0, 'stokechat_email_optout', '', true );
 delete_metadata( 'user', 0, 'stokechat_room_order', '', true );
 
 if ( function_exists( 'wp_roles' ) ) {
-	foreach ( wp_roles()->role_objects as $role ) {
-		$role->remove_cap( 'stokechat_create_rooms' );
+	// Prefixed: uninstall.php runs in the global scope, where a bare $role
+	// would clobber WordPress's own global of that name.
+	foreach ( wp_roles()->role_objects as $stokechat_role ) {
+		$stokechat_role->remove_cap( 'stokechat_create_rooms' );
 	}
 }
 
