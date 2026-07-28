@@ -837,23 +837,41 @@ class Gallus_QR_REST {
 
 		$size = isset( $raw['size'] ) ? max( 128, min( 1024, (int) $raw['size'] ) ) : 512;
 
+		/**
+		 * Filter the largest inline logo accepted, in bytes.
+		 *
+		 * The regex below constrains the MIME type but says nothing about
+		 * length, and `design` is a longtext column. Every saved design is also
+		 * inlined verbatim into the Scan Stats page and into the data-design
+		 * attribute of every front-end embed, so an oversized logo is not just
+		 * disk: it is downloaded by administrators and public visitors alike.
+		 *
+		 * @param int $bytes
+		 */
+		$logo_limit = (int) apply_filters( 'gallus_qr_max_logo_bytes', 256 * 1024 );
+
 		$logo = '';
 		if ( ! empty( $raw['logo'] ) && is_string( $raw['logo'] )
+			&& ( $logo_limit < 1 || strlen( $raw['logo'] ) <= $logo_limit )
 			&& preg_match( '#^data:image/(png|svg\+xml|jpeg);base64,[A-Za-z0-9+/=]+$#', $raw['logo'] ) ) {
 			$logo = $raw['logo'];
 		}
 
 		// Media-library logo: keep the ID and re-resolve the URL server-side so
-		// a client can't point the design at an arbitrary address.
+		// a client can't point the design at an arbitrary address. The
+		// capability check is separate — without it, probing logoId 1..N turns
+		// the response into a listing of every attachment URL on the site.
 		$logo_id  = ! empty( $raw['logoId'] ) ? absint( $raw['logoId'] ) : 0;
 		$logo_url = '';
-		if ( $logo_id ) {
+		if ( $logo_id && current_user_can( 'read_post', $logo_id ) ) {
 			$resolved = wp_get_attachment_url( $logo_id );
 			if ( $resolved ) {
 				$logo_url = $resolved;
 			} else {
 				$logo_id = 0;
 			}
+		} else {
+			$logo_id = 0;
 		}
 
 		$frame = null;

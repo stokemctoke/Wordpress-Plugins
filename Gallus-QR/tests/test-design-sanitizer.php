@@ -101,6 +101,66 @@ class Test_Gallus_QR_Design_Sanitizer extends WP_UnitTestCase {
 		$this->assertSame( '#ffffff', $out['frame']['textColor'] );
 	}
 
+	public function test_oversized_inline_logo_is_rejected() {
+		// design is a longtext column, and every saved design is inlined into
+		// the stats page and into each front-end embed — so an unbounded logo
+		// is downloaded by admins and visitors, not merely stored.
+		$big = 'data:image/png;base64,' . str_repeat( 'A', 400 * 1024 );
+
+		$out = $this->sanitize( array( 'logo' => $big ) );
+
+		$this->assertTrue( empty( $out['logo'] ), 'an oversized logo must not be stored' );
+	}
+
+	public function test_logo_within_the_limit_is_kept() {
+		$ok = 'data:image/png;base64,' . str_repeat( 'A', 1024 );
+
+		$out = $this->sanitize( array( 'logo' => $ok ) );
+
+		$this->assertSame( $ok, $out['logo'] );
+	}
+
+	public function test_logo_size_limit_is_filterable() {
+		$raise = static function () {
+			return 1024 * 1024;
+		};
+		add_filter( 'gallus_qr_max_logo_bytes', $raise );
+
+		$big = 'data:image/png;base64,' . str_repeat( 'A', 400 * 1024 );
+		$out = $this->sanitize( array( 'logo' => $big ) );
+
+		remove_filter( 'gallus_qr_max_logo_bytes', $raise );
+
+		$this->assertSame( $big, $out['logo'] );
+	}
+
+	public function test_logo_id_the_user_cannot_read_is_dropped() {
+		$owner  = self::factory()->user->create( array( 'role' => 'author' ) );
+		$outsider = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+
+		// An attachment hanging off a private post: readable by its author,
+		// not by everyone who can guess an integer.
+		$private = self::factory()->post->create(
+			array(
+				'post_author' => $owner,
+				'post_status' => 'private',
+			)
+		);
+		$attachment = self::factory()->attachment->create_object(
+			array(
+				'file'           => 'secret-logo.png',
+				'post_parent'    => $private,
+				'post_mime_type' => 'image/png',
+			)
+		);
+
+		wp_set_current_user( $outsider );
+		$out = $this->sanitize( array( 'logoId' => $attachment ) );
+
+		$this->assertTrue( empty( $out['logoId'] ), 'logoId must be dropped' );
+		$this->assertTrue( empty( $out['logoUrl'] ), 'logoUrl must not leak' );
+	}
+
 	public function test_frame_text_is_capped_at_40_chars() {
 		$out = $this->sanitize(
 			array(
