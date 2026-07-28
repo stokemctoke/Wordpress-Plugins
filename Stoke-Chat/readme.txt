@@ -4,7 +4,7 @@ Tags: chat, messaging, rooms, community, members
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.1.3
+Stable tag: 1.1.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -47,6 +47,24 @@ Stoke Chat adds a fully self-hosted chat to a single WordPress site. There is no
 3. Place `[stoke_chat]` on a page and set that page's URL under Settings → Stoke Chat.
 
 == Changelog ==
+
+= 1.1.4 =
+Security release, from a full audit of the plugin. Recommended for any site
+with open registration.
+
+* Members can no longer be used to send mail to strangers. Room invitations are
+  one-sided, and in a private two-person room the other member counts as
+  mentioned — so anyone able to create a room could add any account and make
+  the site email them, with the room's name showing in the subject line. The
+  room name is out of the subject, alerts are capped per recipient per hour on
+  top of the existing per-room limit, and people who have never opened the chat
+  are no longer treated as "away" (which had made every account on the site
+  permanently emailable).
+* The user lookup used for invites no longer exposes everyone's login name to
+  anyone signed in. It is limited to people who can create rooms, cannot be
+  searched by login, and is rate limited.
+* Room member lists now require membership, matching message history. Previously
+  anyone signed in could read the full roster of any public room.
 
 = 1.1.3 =
 * Send button is green and Delete room stays red on both brand palettes.

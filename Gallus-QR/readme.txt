@@ -5,7 +5,7 @@ Tags: qr code, qr, qr code generator, dynamic qr, analytics
 Requires at least: 6.3
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 2.1.0
+Stable tag: 2.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -110,6 +110,47 @@ Yes. Under Settings → Gallus QR, set “Extra role with access” to Subscribe
 only sees codes they created. Administrators still see every code.
 
 == Changelog ==
+
+= 2.1.1 =
+Follow-up to the 2.1.0 hardening after a full audit of the plugin. Several of
+the 2.1.0 fixes turned out to be incomplete in ways that cancelled them out on
+common hosting setups, so this release supersedes it — install this one.
+
+* Fixed forged visitor addresses. X-Forwarded-For was read left-to-right, but
+  reverse proxies *append* to that header, so the entry a visitor sent
+  themselves came first and was believed. The chain is now walked from the
+  right. Separately, IPv4-mapped IPv6 peers (`::ffff:203.0.113.9`, which is how
+  a dual-stack server reports ordinary visitors) were classified as private,
+  which trusted the whole internet. Trusted ranges are now an explicit list —
+  see the new `gallus_qr_trusted_proxies` filter if you sit behind a CDN.
+* Country detection had the same flaw: `CF-IPCountry` and `X-Country-Code` were
+  read straight from the request with no checks, so anyone could write your
+  analytics. They are now only believed behind a trusted proxy.
+* Scan caps are actually enforceable now. An exhausted code still redirected for
+  anyone sending a bot-like (or empty) user agent; de-duplication was not atomic,
+  so simultaneous requests all counted; and because de-duplication is per
+  visitor, it never stopped someone with many addresses. Capped codes now also
+  limit how fast the cap can be spent, regardless of who is asking
+  (`gallus_qr_cap_spend_interval`).
+* A database hiccup no longer looks like an expired code. A deadlock or timeout
+  used to show visitors the permanent "no longer active" page.
+* Closed an embed loophole: an editor could read another user's WiFi password or
+  vCard through the block renderer by pointing it at the owner's post.
+  Non-trackable URL codes now follow the same ownership rule, and paused or
+  expired codes no longer render as though live.
+* `/qr/` links only work as real `/qr/…` URLs now. The slug could previously be
+  appended to any address on the site, which sidestepped edge/firewall rules.
+* Inline logos are capped at 256KB (`gallus_qr_max_logo_bytes`), and a media
+  item you cannot view is no longer resolved into a design.
+* When a user is deleted their codes are handed to whoever you nominate, or to
+  the first administrator — never left pointing at a freed account, which a
+  later user could inherit. Printed codes keep working.
+* The Scan Stats screen is paginated and much lighter: it no longer runs four
+  queries for every code on the site, and no longer sends every saved design to
+  the browser on each load. New indexes speed up the breakdowns.
+* Upgrade note: this is database version 7. The upgrade runs automatically, and
+  the version marker is now written only after the data work finishes, so an
+  interrupted upgrade retries instead of silently skipping.
 
 = 2.1.0 =
 Security and abuse hardening. Recommended for any site where more than one
