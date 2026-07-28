@@ -24,6 +24,11 @@ global $wpdb;
 $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}gallus_qr_scans" );
 $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}gallus_qr_codes" );
 $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}gallus_qr_presets" );
+$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}gallus_qr_claims" );
+
+// Pre-2.1.1 builds kept scan-dedupe state in transients; those rows outlive
+// the tables, so clear them even though nothing writes them any more.
+$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '\_transient\_gqr\_seen\_%' OR option_name LIKE '\_transient\_timeout\_gqr\_seen\_%'" );
 // phpcs:enable
 
 delete_option( 'gallus_qr_settings' );

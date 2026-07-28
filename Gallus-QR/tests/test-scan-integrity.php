@@ -143,6 +143,105 @@ class Test_Gallus_QR_Scan_Integrity extends WP_UnitTestCase {
 
 	// --- Cap state ------------------------------------------------------------
 
+	public function test_claim_is_atomic_across_repeated_attempts() {
+		// The dedupe claim must be won exactly once, by whoever gets there
+		// first — not "whoever last checked an absent transient".
+		$db = new Gallus_QR_Database();
+
+		$this->assertTrue( $db->claim_once( 'atomic-test', 60 ) );
+		for ( $i = 0; $i < 25; $i++ ) {
+			$this->assertFalse( $db->claim_once( 'atomic-test', 60 ), 'attempt ' . $i . ' should lose' );
+		}
+	}
+
+	public function test_expired_claims_are_reclaimable_and_prunable() {
+		$db = new Gallus_QR_Database();
+
+		$this->assertTrue( $db->claim_once( 'expiry-test', 1 ) );
+		$this->assertFalse( $db->claim_once( 'expiry-test', 1 ) );
+
+		// Age the claim past its expiry rather than sleeping.
+		global $wpdb;
+		$wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$db->claims_table()} SET expires_at = %s WHERE claim_key = %s",
+				'2000-01-01 00:00:00',
+				hash( 'sha256', 'expiry-test' )
+			)
+		);
+
+		$this->assertTrue( $db->claim_once( 'expiry-test', 60 ), 'an expired claim must be reclaimable' );
+
+		$wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$db->claims_table()} SET expires_at = %s WHERE claim_key = %s",
+				'2000-01-01 00:00:00',
+				hash( 'sha256', 'expiry-test' )
+			)
+		);
+		$this->assertGreaterThan( 0, $db->prune_claims() );
+	}
+
+	// --- Cap enforcement ------------------------------------------------------
+
+	public function test_capped_codes_spend_at_a_bounded_rate() {
+		$code = (object) array(
+			'id'         => 4242,
+			'max_scans'  => 1000,
+			'scan_count' => 0,
+		);
+
+		// Per-code, independent of who is asking: an attacker rotating source
+		// addresses gets a fresh dedupe bucket but not a fresh cap allowance.
+		$this->assertTrue( $this->invoke( 'may_spend_cap', $code ) );
+		$this->assertFalse( $this->invoke( 'may_spend_cap', $code ) );
+		$this->assertFalse( $this->invoke( 'may_spend_cap', $code ) );
+	}
+
+	public function test_uncapped_codes_are_never_rate_limited() {
+		$code = (object) array(
+			'id'         => 4243,
+			'max_scans'  => 0,
+			'scan_count' => 99999,
+		);
+
+		for ( $i = 0; $i < 5; $i++ ) {
+			$this->assertTrue( $this->invoke( 'may_spend_cap', $code ) );
+		}
+	}
+
+	public function test_cap_spend_limit_can_be_disabled_by_filter() {
+		add_filter( 'gallus_qr_cap_spend_interval', '__return_zero' );
+
+		$code = (object) array(
+			'id'         => 4244,
+			'max_scans'  => 10,
+			'scan_count' => 0,
+		);
+
+		$this->assertTrue( $this->invoke( 'may_spend_cap', $code ) );
+		$this->assertTrue( $this->invoke( 'may_spend_cap', $code ) );
+
+		remove_filter( 'gallus_qr_cap_spend_interval', '__return_zero' );
+	}
+
+	public function test_try_count_scan_separates_cap_reached_from_failure() {
+		$db   = new Gallus_QR_Database();
+		$slug = 'cap-' . uniqid();
+
+		$this->assertSame( $slug, $db->insert_code( 'capped', 'https://example.test', true, '', 'url', '', $slug ) );
+
+		$code = $db->get_code_by_slug( $slug );
+		$id   = (int) $code->id;
+
+		global $wpdb;
+		$wpdb->update( $db->codes_table(), array( 'max_scans' => 1 ), array( 'id' => $id ) );
+
+		$this->assertTrue( $db->try_count_scan( $id ), 'first scan counts' );
+		$this->assertFalse( $db->try_count_scan( $id ), 'cap reached is false' );
+		$this->assertNotNull( $db->try_count_scan( $id ), 'a reached cap is not a database error' );
+	}
+
 	public function test_is_capped_only_when_a_limit_is_set_and_reached() {
 		$uncapped = (object) array(
 			'max_scans'  => 0,

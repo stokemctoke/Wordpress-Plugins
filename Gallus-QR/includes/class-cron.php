@@ -40,12 +40,16 @@ class Gallus_QR_Cron {
 
 	/**
 	 * The daily prune, honouring the retention setting (0 = keep forever).
+	 * Expired scan-dedupe claims are always swept — they are seconds-lived
+	 * bookkeeping, unrelated to how long analytics are kept.
 	 */
 	public function prune() {
 		$days = (int) Gallus_QR_Settings::get( 'retention_days' );
 		if ( $days > 0 ) {
 			$this->db->prune_scans( $days );
 		}
+
+		$this->db->prune_claims();
 	}
 
 	/**

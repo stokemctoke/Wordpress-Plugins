@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Handy constants so other files can find themselves and bust asset caches.
 define( 'GALLUS_QR_VERSION', '2.1.0' );
-define( 'GALLUS_QR_DB_VERSION', '5' );                       // bump when the schema changes
+define( 'GALLUS_QR_DB_VERSION', '6' );                       // bump when the schema changes
 define( 'GALLUS_QR_PATH', plugin_dir_path( __FILE__ ) );   // /…/gallus-qr/
 define( 'GALLUS_QR_URL', plugin_dir_url( __FILE__ ) );      // https://…/gallus-qr/
 
@@ -48,7 +48,9 @@ require_once GALLUS_QR_PATH . 'includes/class-integrations.php';
  */
 register_activation_hook( __FILE__, static function () {
 	$db = new Gallus_QR_Database();
-	$db->create_tables();
+	// maybe_upgrade() creates the tables and records the schema version once the
+	// backfills have run; create_tables() alone no longer stamps the version.
+	$db->maybe_upgrade();
 
 	$role = get_role( 'administrator' );
 	if ( $role ) {

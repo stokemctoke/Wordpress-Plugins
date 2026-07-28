@@ -91,23 +91,37 @@ class Gallus_QR_Redirect {
 			$this->fail_over( $code );
 		}
 
-		// Count the scan (privacy: store only a salted hash of the IP). The
-		// counter update is atomic and doubles as the scan-cap gate. Bots are
-		// redirected but never counted (and never consume the cap), and repeat
-		// hits from the same visitor inside the dedupe window are redirected
-		// without counting — otherwise a scripted loop could burn through
-		// max_scans and permanently kill a code that's already been printed.
+		// The cap is a lifecycle gate like paused/expired, so it is checked for
+		// EVERY visitor. Leaving it inside the trackable/bot branch below meant
+		// `curl -A bot` (or any empty user-agent, which is_bot() also matches)
+		// walked straight past an exhausted code to its live destination.
+		if ( $this->is_capped( $code ) ) {
+			$this->fail_over( $code );
+		}
+
+		// Count the scan (privacy: store only a salted hash of the IP). Bots are
+		// redirected but never counted, and repeat hits from the same visitor
+		// inside the dedupe window are redirected without counting — otherwise a
+		// scripted loop could burn through max_scans and permanently kill a code
+		// that's already been printed.
 		$ua      = $this->user_agent();
 		$is_bot  = Gallus_QR_Settings::get( 'bot_filter' ) && Gallus_QR_Analytics::is_bot( $ua );
 		$variant = $this->pick_variant( $code );
 		$ip_hash = $this->client_ip_hash();
 
-		if ( (int) $code->trackable === 1 && ! $is_bot ) {
-			if ( $this->claim_scan( (int) $code->id, $ip_hash ) ) {
-				if ( ! $this->db->try_count_scan( (int) $code->id ) ) {
-					$this->fail_over( $code ); // cap reached
-				}
+		if ( (int) $code->trackable === 1 && ! $is_bot
+			&& $this->claim_scan( (int) $code->id, $ip_hash )
+			&& $this->may_spend_cap( $code ) ) {
+			$counted = $this->db->try_count_scan( (int) $code->id );
 
+			// null = the query itself failed. A deadlock or lock-wait timeout is
+			// not the same as "this code is used up", and must never show a
+			// customer scanning a printed product the 410 page.
+			if ( false === $counted ) {
+				$this->fail_over( $code );
+			}
+
+			if ( true === $counted ) {
 				$this->db->insert_scan(
 					(int) $code->id,
 					$ip_hash,
@@ -115,10 +129,6 @@ class Gallus_QR_Redirect {
 					$variant,
 					Gallus_QR_Analytics::detect_country()
 				);
-			} elseif ( $this->is_capped( $code ) ) {
-				// Uncounted repeat hit, but the code is already exhausted —
-				// it must still fail over rather than quietly keep working.
-				$this->fail_over( $code );
 			}
 		}
 
@@ -231,14 +241,50 @@ class Gallus_QR_Redirect {
 			return true;
 		}
 
-		$key = 'gqr_seen_' . (int) $code_id . '_' . substr( $ip_hash, 0, 24 );
+		// Atomic: a get-then-set on a transient lets N concurrent requests all
+		// observe "absent" and all count, which is an N-fold amplification for
+		// anyone burning a cap. It also survives an object-cache eviction, which
+		// would silently switch de-duplication off altogether.
+		return $this->db->claim_once( 'seen:' . (int) $code_id . ':' . substr( $ip_hash, 0, 32 ), $window );
+	}
 
-		if ( get_transient( $key ) ) {
-			return false;
+	/**
+	 * Is this code allowed to spend more of its scan cap right now?
+	 *
+	 * Per-visitor de-duplication alone does not protect a cap: an attacker with
+	 * many source addresses (a routed IPv6 /64 hands out a fresh one per
+	 * request, and a proxy pool does the same) simply gets a fresh bucket each
+	 * time. A capped code is a physical object — printed on packaging, etched
+	 * into silkscreen — so exhausting it is unrecoverable in the field.
+	 *
+	 * Rate-limiting cap consumption per CODE, independent of who is asking,
+	 * turns "kill it in seconds" into something slow enough to notice and act
+	 * on. Uncapped codes are unaffected: there is nothing to protect.
+	 *
+	 * @param object $code
+	 * @return bool True when this hit may consume one unit of the cap.
+	 */
+	private function may_spend_cap( $code ) {
+		$max = isset( $code->max_scans ) ? (int) $code->max_scans : 0;
+
+		if ( $max < 1 ) {
+			return true;
 		}
 
-		set_transient( $key, 1, $window );
-		return true;
+		/**
+		 * Filter how fast a capped code's remaining scans may be consumed:
+		 * at most one per this many seconds. 0 disables the limit.
+		 *
+		 * @param int    $seconds
+		 * @param object $code
+		 */
+		$interval = (int) apply_filters( 'gallus_qr_cap_spend_interval', 2, $code );
+
+		if ( $interval < 1 ) {
+			return true;
+		}
+
+		return $this->db->claim_once( 'cap:' . (int) $code->id, $interval );
 	}
 
 	/**

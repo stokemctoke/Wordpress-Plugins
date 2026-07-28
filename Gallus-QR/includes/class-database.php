@@ -35,6 +35,12 @@ class Gallus_QR_Database {
 		return $wpdb->prefix . 'gallus_qr_presets';
 	}
 
+	/** @return string Fully-qualified scan-dedupe claims table name. */
+	public function claims_table() {
+		global $wpdb;
+		return $wpdb->prefix . 'gallus_qr_claims';
+	}
+
 	/**
 	 * Create/upgrade the tables. Called from the activation hook. dbDelta is
 	 * idempotent — safe to run on every activation.
@@ -47,6 +53,7 @@ class Gallus_QR_Database {
 		$codes           = $this->codes_table();
 		$scans           = $this->scans_table();
 		$presets         = $this->presets_table();
+		$claims          = $this->claims_table();
 
 		// Note: dbDelta is fussy — two spaces after PRIMARY KEY, lowercase types,
 		// no backticks, and `text` columns cannot take a DEFAULT.
@@ -103,12 +110,19 @@ class Gallus_QR_Database {
 			KEY user_id (user_id)
 		) {$charset_collate};";
 
+		// Short-lived scan-dedupe claims. The primary key is what makes the
+		// claim atomic — INSERT IGNORE lets exactly one concurrent request win.
+		$sql_claims = "CREATE TABLE {$claims} (
+			claim_key char(64) NOT NULL,
+			expires_at datetime NOT NULL,
+			PRIMARY KEY  (claim_key),
+			KEY expires_at (expires_at)
+		) {$charset_collate};";
+
 		dbDelta( $sql_codes );
 		dbDelta( $sql_scans );
 		dbDelta( $sql_presets );
-
-		// Record the schema version so upgrades can run without reactivation.
-		update_option( 'gallus_qr_db_version', GALLUS_QR_DB_VERSION );
+		dbDelta( $sql_claims );
 	}
 
 	/**
@@ -125,6 +139,14 @@ class Gallus_QR_Database {
 			return;
 		}
 
+		// The version marker is written at the END, once every backfill below
+		// has run. Recording it up front means a PHP timeout, OOM or FPM restart
+		// part-way through leaves the option claiming the migration happened
+		// while the data work was skipped — and it never retries, because the
+		// early return above sees a matching version. The v3 branch makes that
+		// concrete: it runs a correlated COUNT(*) over the whole scans table
+		// (a realistic timeout on a busy site) and is also what grants
+		// administrators the plugin capability.
 		$this->create_tables();
 
 		if ( (int) $installed < 3 ) {
@@ -165,6 +187,11 @@ class Gallus_QR_Database {
 				)
 			);
 		}
+
+		// Everything above succeeded — only now is the schema really at this
+		// version. An interrupted run leaves the old value and simply retries
+		// on the next request.
+		update_option( 'gallus_qr_db_version', GALLUS_QR_DB_VERSION );
 	}
 
 	/**
@@ -415,8 +442,13 @@ class Gallus_QR_Database {
 	 * increments the counter and enforces max_scans, so concurrent scans can
 	 * never overshoot the cap (no read-then-write race).
 	 *
+	 * Three outcomes, and the caller must tell them apart: a database fault is
+	 * NOT the same as "this code is used up". Collapsing them means a deadlock,
+	 * lock-wait timeout or read-only replica shows a customer scanning a printed
+	 * product the permanent-looking "no longer active" page.
+	 *
 	 * @param int $code_id
-	 * @return bool True when the scan is allowed (counter incremented).
+	 * @return bool|null True = counted, false = cap reached, null = query failed.
 	 */
 	public function try_count_scan( $code_id ) {
 		global $wpdb;
@@ -430,7 +462,71 @@ class Gallus_QR_Database {
 			)
 		);
 
-		return (bool) $rows;
+		if ( false === $rows ) {
+			return null;
+		}
+
+		return $rows > 0;
+	}
+
+	/**
+	 * Atomically claim a short-lived key, used to de-duplicate scans.
+	 *
+	 * INSERT IGNORE against a UNIQUE primary key is the claim: exactly one
+	 * concurrent request can insert a given key, every other gets 0 affected
+	 * rows. A get-then-set on a transient cannot do this — N simultaneous
+	 * requests all read "absent" and all proceed, which is worth roughly an
+	 * N-fold amplification to anyone burning a code's scan cap.
+	 *
+	 * @param string $key Opaque claim key.
+	 * @param int    $ttl Seconds the claim is held.
+	 * @return bool True when this caller won the claim.
+	 */
+	public function claim_once( $key, $ttl ) {
+		global $wpdb;
+
+		$table = $this->claims_table();
+		$hash  = hash( 'sha256', (string) $key );
+
+		// Sweep this key's expired claim first so a stale row can't hold the
+		// slot forever; the INSERT below then decides the race.
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$table} WHERE claim_key = %s AND expires_at <= UTC_TIMESTAMP()",
+				$hash
+			)
+		);
+
+		$rows = $wpdb->query(
+			$wpdb->prepare(
+				"INSERT IGNORE INTO {$table} (claim_key, expires_at)
+				 VALUES (%s, DATE_ADD(UTC_TIMESTAMP(), INTERVAL %d SECOND))",
+				$hash,
+				max( 1, (int) $ttl )
+			)
+		);
+
+		// A failed query must not silently disable de-duplication, but it must
+		// not block a genuine visitor either — treat it as claimed.
+		if ( false === $rows ) {
+			return true;
+		}
+
+		return $rows > 0;
+	}
+
+	/**
+	 * Drop expired dedupe claims. Called from the daily cron alongside the
+	 * scan pruner so the table cannot grow without bound.
+	 *
+	 * @return int Rows removed.
+	 */
+	public function prune_claims() {
+		global $wpdb;
+
+		$table = $this->claims_table();
+
+		return (int) $wpdb->query( "DELETE FROM {$table} WHERE expires_at <= UTC_TIMESTAMP()" );
 	}
 
 	/**
