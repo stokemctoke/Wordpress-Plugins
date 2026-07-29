@@ -125,8 +125,9 @@ awk -v ver="$VERSION" '
 	grabbing { print }
 ' "$README" | sed -e 's/[[:space:]]*$//' > "$NOTES_FILE"
 
-# Trim leading/trailing blank lines.
+# Trim leading, then trailing, blank lines.
 sed -i -e '/./,$!d' "$NOTES_FILE"
+sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$NOTES_FILE"
 [ -s "$NOTES_FILE" ] || die "no '= $VERSION =' section in $README — write the changelog entry first"
 
 step "Release notes from $README"
@@ -146,7 +147,9 @@ sed -i "s/\(define( '[A-Z_]*VERSION', '\)${OLD_RE}\(' );\)/\1${VERSION}\2/" "$MA
 sed -i "s/^Stable tag: ${OLD_RE}[[:space:]]*$/Stable tag: ${VERSION}/" "$README"
 
 git --no-pager diff --stat
-git --no-pager diff -U0 | grep -E '^[+-] ' | grep -vE '^[+-]{3}' | sed 's/^/  /'
+# Every changed line, not just the ones that happen to start "+ " — the
+# define() and Stable tag edits are the easy ones to get wrong silently.
+git --no-pager diff -U0 | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)' | sed 's/^/  /'
 
 grep -q "^ \* Version: *${VERSION}$" "$MAIN_FILE" || die "header bump failed in $MAIN_FILE"
 grep -q "^Stable tag: ${VERSION}$" "$README" || die "stable tag bump failed in $README"
