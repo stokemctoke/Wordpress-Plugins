@@ -2,6 +2,8 @@
 
 Self-hosted chat rooms for a single WordPress site. No external services, no build step — messages live in your own database and only registered, logged-in users can participate.
 
+**[⬇ Download the latest release](https://github.com/stokemctoke/Wordpress-Plugins/releases?q=Stoke+Chat&expanded=true)** → WordPress admin → **Plugins → Add New → Upload Plugin**.
+
 ## Features
 
 - **Logged-in users only.** No public or unregistered access anywhere — the UI shows a login prompt and every REST route requires authentication.

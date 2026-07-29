@@ -4,3 +4,6 @@
 # Local virtualenvs / tooling (never ship)
 **/VirtualEnvs/
 **/.venv/
+
+# Release build output (tools/release.sh)
+dist/

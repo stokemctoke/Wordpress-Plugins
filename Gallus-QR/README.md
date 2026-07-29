@@ -2,7 +2,9 @@
 
 Free, self-hosted QR code studio for WordPress. Design styled codes, track scans on your own site, and manage a per-user code library — no external QR service, no per-scan fees.
 
-**Version:** 2.0.2 · **License:** GPL-2.0-or-later · **Brand:** Gallus QR (runs on your WordPress install)
+**[⬇ Download the latest release](https://github.com/stokemctoke/Wordpress-Plugins/releases?q=Gallus+QR&expanded=true)** → WordPress admin → **Plugins → Add New → Upload Plugin**.
+
+**License:** GPL-2.0-or-later · **Brand:** Gallus QR (runs on your WordPress install)
 
 ---
 
