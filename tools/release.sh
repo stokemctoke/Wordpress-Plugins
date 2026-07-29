@@ -99,6 +99,13 @@ note "tag       : $TAG"
 
 [ "$OLD_VERSION" != "$VERSION" ] || die "$MAIN_FILE is already at $VERSION"
 
+# WordPress only offers an update when the new version sorts higher, so a
+# typo'd downgrade would ship an unreachable release. Easy to do: the digits
+# are adjacent on the keyboard and the plugin dir gives no hint of its version.
+HIGHEST="$(printf '%s\n%s\n' "$OLD_VERSION" "$VERSION" | sort -V | tail -1)"
+[ "$HIGHEST" = "$VERSION" ] \
+	|| die "$VERSION is lower than the current $OLD_VERSION — WordPress would never offer it as an update"
+
 git rev-parse -q --verify "refs/tags/$TAG" >/dev/null \
 	&& die "tag $TAG already exists locally"
 if git ls-remote --exit-code --tags origin "$TAG" >/dev/null 2>&1; then
